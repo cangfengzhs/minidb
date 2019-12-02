@@ -7,10 +7,17 @@
 #include <iostream>
 using namespace std;
 
+int func(const std::shared_ptr<string>& a,const std::shared_ptr<string>& b){
+    return 0;
+}
+class Memtable{
+    minidb::SkipList<std::shared_ptr<string>> skiplist_;
+public:
+    Memtable():skiplist_(func){}
+
+};
 int main(){
-    minidb::SkipList<int> skiplist([](int a,int b){
-        return a<b?-1:a==b?0:1;
-    });
+    minidb::SkipList<std::shared_ptr<int>> skiplist(func);
     for(int i=1;i<100;i+=2){
         skiplist.add(i);
     }

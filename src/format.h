@@ -7,8 +7,21 @@
 
 #include <memory>
 #include <vector>
+#include <functional>
 namespace minidb{
     template <typename T> using ptr = std::shared_ptr<T>;
     template <typename T> using vec = std::vector<T>;
+    using LogSeqNumber = uint64_t;
+    enum class KeyType:unsigned char{
+        INSERT=0,
+        DELETE=1,
+        LOOKUP=2
+    };
+    using Checksum = std::uint32_t;
+    template <typename T,typename ...Args>
+    inline ptr<T> make_ptr(Args ...args){
+        return std::make_shared<T>(args...);
+    }
+
 }
 #endif //MINIDB_FORMAT_H
