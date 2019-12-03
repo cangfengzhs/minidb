@@ -17,6 +17,7 @@ namespace minidb{
         Slice(const char* start,const char* end);
         int size();
         const char* data();
+        bool operator==(const Slice& ref)const;
     };
 }
 

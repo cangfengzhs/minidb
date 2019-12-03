@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <sys/fcntl.h>
 #include "file_util.h"
-namespace minidb{
+namespace minidb::file_util{
     void create_dir(const std::string& dir_name){
         int result = mkdir(dir_name.c_str(),0755);
         if(result==-1){

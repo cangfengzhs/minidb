@@ -18,7 +18,7 @@ namespace minidb {
         if(value){
             size_+=value->size();
         }
-        ptr<Record> record = make_ptr<Record>(std::move(user_key),lsn,type,std::move(value));
+        ptr<Record> record = make_ptr<Record>(user_key,lsn,type,value);
         skiplist_.add(record);
     }
     ptr<Slice> MemTable::get(minidb::ptr<minidb::Slice> user_key, minidb::LogSeqNumber lsn) {

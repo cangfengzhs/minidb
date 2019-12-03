@@ -16,7 +16,7 @@ namespace minidb {
         KeyType type_;
         Checksum checksum_;
     public:
-        Record(ptr <Slice> user_key, LogSeqNumber lsn, KeyType type, ptr <Slice> value);
+        Record(ptr<Slice> user_key, LogSeqNumber lsn, KeyType type, ptr<Slice> value);
         Record(char *data, bool hash_checksum);
         ptr<Slice> user_key();
         ptr<Slice> value();

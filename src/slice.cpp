@@ -18,4 +18,7 @@ namespace minidb{
     const char* Slice::data() {
         return data_.data();
     }
+    bool Slice::operator==(const minidb::Slice &ref) const {
+        return data_==ref.data_;
+    }
 }
