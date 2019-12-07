@@ -19,7 +19,7 @@ namespace minidb{
         uint64_t magic;
         reader->read(&magic,8);
         assert(magic==config::MAGIC);
-        root = make_ptr<Block>((char*)root_block_offset);
+        root = make_ptr<Block>((char*)(reader->base()+root_block_offset));
     }
     ptr<Record> SSTable::lower_bound(ptr<Record> lookup) {
         ptr<Block> blk = root;
@@ -28,7 +28,7 @@ namespace minidb{
             ret = blk->lower_bound(lookup);
             if(ret&&ret->type()==KeyType::OFFSET){
                 uint64_t block_offset = *(uint64_t*)(ret->value()->data());
-                blk = make_ptr<Block>((char*)block_offset);
+                blk = make_ptr<Block>((char*)(reader->base()+block_offset));
             }
             else{
                 break;
