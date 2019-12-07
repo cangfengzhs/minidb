@@ -7,8 +7,46 @@
 
 #include <string>
 
-namespace minidb::file_util{
+namespace minidb{
     void create_dir(const std::string& dir_name);
     int create_file(const std::string& file_name);
+
+    struct FileMeta{
+        std::string file_name;
+        int file_number;
+        int fd;
+        bool remove_flag;
+        FileMeta(const std::string& file_name,int file_number,int fd);
+        ~FileMeta();
+        int remove();
+    };
+
+    class BufWriter{
+        char buf[1024];
+        int buf_offset;
+        FileMeta filemeta;
+    public:
+        BufWriter(const std::string& file_name,bool end_with_magic,bool cover);
+        int write(const char* data,int size);
+        int write(void* data,int size);
+        bool flush();
+        bool sync();
+        int remove();
+    };
+    class MmapReader{
+        char* data;
+        int size_;
+        FileMeta filemeta;
+        int offset_;
+
+    public:
+        MmapReader(const std::string& file_name,bool end_with_magic);
+        int read(const char* data,int size);
+        int read(void* data,int size);
+        int remove();
+        int seek(uint64_t offset);
+        int size();
+
+    };
 }
 #endif //MINIDB_FILE_UTIL_H

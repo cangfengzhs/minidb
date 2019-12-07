@@ -13,9 +13,10 @@ namespace minidb{
     template <typename T> using vec = std::vector<T>;
     using LogSeqNumber = uint64_t;
     enum class KeyType:unsigned char{
-        INSERT=0,
-        DELETE=1,
-        LOOKUP=2
+        INSERT,
+        DELETE,
+        OFFSET,
+        LOOKUP
     };
     using Checksum = std::uint32_t;
     template <typename T,typename ...Args>
