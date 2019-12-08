@@ -29,8 +29,8 @@ namespace minidb{
         uint64_t size_;
     public:
         BufWriter(const std::string& file_name,bool end_with_magic,bool cover);
-        int write(const char* data,int size);
-        int write(void* data,int size);
+        int append(const char* data,int size);
+        int append(void* data,int size);
         bool flush();
         bool sync();
         uint64_t size();

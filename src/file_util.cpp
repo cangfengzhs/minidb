@@ -4,11 +4,11 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/fcntl.h>
-#include <unistd.h>
 #include <cassert>
 #include <sys/mman.h>
 #include "file_util.h"
 #include "config.h"
+#include <unistd.h>
 
 namespace minidb {
     void create_dir(const std::string &dir_name) {
@@ -73,10 +73,10 @@ namespace minidb {
     uint64_t BufWriter::size() {
         return size_;
     }
-    int BufWriter::write(void * data, int size) {
-        return write((const char*)data,size);
+    int BufWriter::append(void * data, int size) {
+        return append((const char*)data,size);
     }
-    int BufWriter::write(const char * data, int size) {
+    int BufWriter::append(const char * data, int size) {
         for(int i=0;i<size;i++){
             buf[buf_offset++]=data[i];
             if(buf_offset==1024){
@@ -86,7 +86,7 @@ namespace minidb {
         return size;
     }
     bool BufWriter::flush() {
-        int cnt = write(buf,buf_offset);
+        int cnt = write(filemeta.fd,(const void*)buf,buf_offset);
         assert(cnt==buf_offset);
         buf_offset=0;
         return true;
