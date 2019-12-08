@@ -16,9 +16,10 @@ namespace minidb{
         int file_number;
         int fd;
         bool remove_flag;
+        FileMeta()= default;
         FileMeta(const std::string& file_name,int file_number,int fd);
         ~FileMeta();
-        int remove();
+        int remove_file();
     };
 
     class BufWriter{
@@ -44,8 +45,8 @@ namespace minidb{
 
     public:
         MmapReader(const std::string& file_name,bool end_with_magic);
-        int read(const char* data,int size);
-        int read(void* data,int size);
+        int read(char* dest,int size);
+        int read(void* dest,int size);
         int remove();
         int seek(uint64_t offset);
         int size();
