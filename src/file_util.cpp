@@ -9,7 +9,7 @@
 #include "file_util.h"
 #include "config.h"
 #include <unistd.h>
-
+#include <cstdio>
 namespace minidb {
     void create_dir(const std::string &dir_name) {
         int result = mkdir(dir_name.c_str(), 0755);
@@ -79,14 +79,15 @@ namespace minidb {
     int BufWriter::append(const char * data, int size) {
         for(int i=0;i<size;i++){
             buf[buf_offset++]=data[i];
-            if(buf_offset==1024){
+            if(buf_offset==8192){
                 flush();
             }
         }
+        size_+=size;
         return size;
     }
     bool BufWriter::flush() {
-        int cnt = write(filemeta.fd,(const void*)buf,buf_offset);
+        int cnt = write(filemeta.fd,buf,buf_offset);
         assert(cnt==buf_offset);
         buf_offset=0;
         return true;
@@ -101,12 +102,15 @@ namespace minidb {
     MmapReader::MmapReader(const std::string &file_name, bool end_with_magic) {
         filemeta.file_name=file_name;
         int fd = open(file_name.c_str(),O_RDONLY);
-        uint64_t size = lseek(fd,0,SEEK_END);
-        size_=size;
-        data=(char*)mmap(nullptr,size,PROT_READ,MAP_SHARED,fd,0);
+        if(fd==-1){
+            //TODO throw exception
+        }
+        file_size = lseek(fd,0,SEEK_END);
+        size_=file_size;
+        data=(char*)mmap(nullptr,file_size,PROT_READ,MAP_SHARED,fd,0);
         if(end_with_magic){
             size_-=8;
-            assert(config::MAGIC==*(uint64_t*)(data+size));
+            assert(config::MAGIC==*(uint64_t*)(data+size_));
         }
         close(fd);
     }
@@ -128,14 +132,16 @@ namespace minidb {
         return -1;
     }
     int MmapReader::read(void * dest, int size) {
-        return read((char*)data,size);
+        return read((char*)dest,size);
     }
     int MmapReader::read(char * dest, int size) {
         int i=0;
         for(i=0;i<size&&offset_<size_;i++){
-            dest[i]=this->data[offset_++];
+            dest[i]= data[offset_++];
         }
         return i;
     }
-
+    MmapReader::~MmapReader(){
+        munmap(base(),file_size);
+    }
 }

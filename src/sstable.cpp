@@ -13,12 +13,9 @@ namespace minidb{
     SSTable::SSTable(const std::string &file_name){
         reader = make_ptr<MmapReader>(file_name,true);
         int size = reader->size();
-        reader->seek(size-16);
+        reader->seek(size-8);
         uint64_t root_block_offset;
         reader->read(&root_block_offset,8);
-        uint64_t magic;
-        reader->read(&magic,8);
-        assert(magic==config::MAGIC);
         root = make_ptr<Block>((char*)(reader->base()+root_block_offset));
     }
     ptr<Record> SSTable::lower_bound(ptr<Record> lookup) {
@@ -27,8 +24,7 @@ namespace minidb{
         for(;;){
             ret = blk->lower_bound(lookup);
             if(ret&&ret->type()==KeyType::OFFSET){
-                uint64_t block_offset = *(uint64_t*)(ret->value()->data());
-                blk = make_ptr<Block>((char*)(reader->base()+block_offset));
+                blk = make_ptr<Block>((char*)(reader->base()+*(uint64_t*)(ret->value()->data())));
             }
             else{
                 break;
@@ -47,9 +43,8 @@ namespace minidb{
         int R = record_offset_array_size-1;
         ptr<Record> ret;
         while(L<=R){
-            int M = (L+R)/2;
-            char* record_offset = record_offset_array[M]+base_;
-            ptr<Record> record = make_ptr<Record>(record_offset, false);
+            int M = (L+R)>>1;
+            ptr<Record> record = make_ptr<Record>(record_offset_array[M]+base_, false);
             int cmp = record_comparator(record,lookup);
             if(cmp>=0){
                 ret = record;

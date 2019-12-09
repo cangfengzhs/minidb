@@ -15,7 +15,7 @@ namespace minidb{
         std::string file_name;
         int file_number;
         int fd;
-        bool remove_flag;
+        bool remove_flag=false;
         FileMeta()= default;
         FileMeta(const std::string& file_name,int file_number,int fd);
         ~FileMeta();
@@ -23,7 +23,7 @@ namespace minidb{
     };
 
     class BufWriter{
-        char buf[1024];
+        char buf[8192];
         int buf_offset;
         FileMeta filemeta;
         uint64_t size_;
@@ -40,6 +40,7 @@ namespace minidb{
     class MmapReader{
         char* data;
         int size_;
+        int file_size;
         FileMeta filemeta;
         int offset_;
 
@@ -51,7 +52,7 @@ namespace minidb{
         int seek(uint64_t offset);
         int size();
         char* base();
-
+        ~MmapReader();
     };
 }
 #endif //MINIDB_FILE_UTIL_H
