@@ -4,7 +4,8 @@
 
 #include "sstable_builder.h"
 #include "file_util.h"
-
+#include <cstdio>
+#include <cassert>
 namespace minidb{
     SSTableBuilder::SSTableBuilder(const std::string &db_name, int file_number) {
         std::string file_name = db_name+"/"+fn_fmt(file_number)+".sst";
@@ -21,10 +22,10 @@ namespace minidb{
             return 0;
         }
         ptr<Record> index_record = make_index(block);
-        add_index(index_record,index_level+1);
         block->dump(writer);
         block->clear();
         block->add_record(record);
+        add_index(index_record,index_level+1);
         return 0;
     }
     int SSTableBuilder::add_record(ptr<class minidb::Record> record) {
@@ -33,10 +34,10 @@ namespace minidb{
             return 0;
         }
         ptr<Record> index_record = make_index(data_block);
-        add_index(index_record,0);
         data_block->dump(writer);
         data_block->clear();
         data_block->add_record(record);
+        add_index(index_record,0);
         return 0;
     }
     int SSTableBuilder::finish() {
@@ -51,6 +52,7 @@ namespace minidb{
             }
             if(i==index_block_list.size()-1){
                 root_offset = writer->size();
+                printf("%llu",writer->size());
                 block->dump(writer);
             }
             else{
@@ -59,8 +61,9 @@ namespace minidb{
                 block->dump(writer);
             }
         }
-        writer->write(&root_offset,8);
-        writer->write((char*)(&config::MAGIC),8);
+        writer->append(&root_offset,8);
+        printf("write: root offset %llu\n",root_offset);
+        writer->append((char*)(&config::MAGIC),8);
         writer->sync();
         writer->close();
         return 0;
@@ -76,14 +79,17 @@ namespace minidb{
         return record_list.empty();
     }
     ptr<class minidb::Record> BlockBuilder::max_record() {
-        return record_list.back();
+        int s = record_list.size();
+        assert(s>0);
+        ptr<Record> ret = record_list[s-1];
+        return ret;
     }
     int BlockBuilder::size() {
         return size_;
     }
     int BlockBuilder::add_record(ptr<class minidb::Record> record) {
         int need = record->user_key()->size()+record->value()->size();
-        need+=4+8+1+4+2;
+        need+=4+8+sizeof(KeyType)+4+2;
         if(size_+need>config::BLOCK_SIZE){
             return -1;
         }
@@ -93,6 +99,7 @@ namespace minidb{
     }
     int BlockBuilder::clear() {
         record_list.clear();
+        size_=4;
         return 0;
     }
     int BlockBuilder::dump(minidb::ptr<minidb::BufWriter> writer) {
@@ -102,33 +109,33 @@ namespace minidb{
             int cnt=0;
             record_offset_array.push_back(offset);
             int size = record->user_key()->size();
-            writer->write(&size,4);
+            writer->append(&size,4);
             cnt+=4;
-            writer->write(record->user_key()->data(),record->user_key()->size());
+            writer->append(record->user_key()->data(),record->user_key()->size());
             cnt+=record->user_key()->size();
             LogSeqNumber lsn = record->lsn();
-            writer->write(&lsn,8);
+            writer->append(&lsn,8);
             cnt+=8;
             KeyType type = record->type();
-            writer->write(&type,sizeof(KeyType));
+            writer->append(&type,sizeof(KeyType));
             cnt+=sizeof(KeyType);
             size = record->value()->size();
-            writer->write(&size,4);
+            writer->append(&size,4);
             cnt+=4;
-            writer->write(record->value()->data(),record->value()->size());
+            writer->append(record->value()->data(),record->value()->size());
             cnt+=record->value()->size();
             offset+=cnt;
         }
         uint16_t record_offset_array_offset = offset;
         for(auto record_offset:record_offset_array){
-            writer->write(&record_offset,2);
+            writer->append(&record_offset,2);
             offset+=2;
         }
         std::string padding(config::BLOCK_SIZE-4-offset,0);
-        writer->write(padding.data(),padding.size());
-        writer->write(&record_offset_array_offset,2);
+        writer->append(padding.data(),padding.size());
+        writer->append(&record_offset_array_offset,2);
         uint16_t array_size = record_list.size();
-        writer->write(&array_size,2);
+        writer->append(&array_size,2);
         return 0;
     }
     BlockBuilder::BlockBuilder():size_(4){}//block末尾2字节存array的base，2字节存array的size
