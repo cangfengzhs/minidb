@@ -13,8 +13,11 @@ namespace minidb{
     class SSTable{
         ptr<MmapReader> reader;
         ptr<Block> root;
-    public:
+        int file_number_;
         SSTable(const std::string& file_name);
+    public:
+        int file_number();
+        SSTable(const std::string& db_name,int file_number);
         ptr<Record> lower_bound(ptr<Record> lookup);
         int remove();
     };

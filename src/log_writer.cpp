@@ -9,15 +9,8 @@
 #include <iostream>
 #include <cassert>
 namespace minidb{
-    LogWriter::LogWriter(const std::string& db_name,int file_number) {
-        file_name_=db_name+"/"+std::to_string(file_number)+".log";
-        std::cout<<file_name_<<std::endl;
-        log_fd_ = file_util::create_file(file_name_);
-        assert(log_fd_!=-1);
-        buf_offset=0;
-    }
-    int LogWriter::remain() {
-        return config::LOG_BUF_SIZE-buf_offset;
+    LogWriter::LogWriter(const std::string& db_name,int file_number,bool create) {
+        writer = make_ptr<BufWriter>(db_name+"/"+fn_fmt(file_number)+".log",true, create);
     }
     void LogWriter::append(minidb::ptr<minidb::Record> record) {
         buf_append(record->checksum());
@@ -46,18 +39,12 @@ namespace minidb{
         buf_append((char*)&type,sizeof(KeyType));
     }
     void LogWriter::buf_append(const char *data, int size) {
-        for(int i=0;i<size;i++){
-            buf[buf_offset] = data[i];
-            buf_offset++;
-            if(buf_offset>=config::LOG_BUF_SIZE){
-                flush();
-            }
-        }
+        writer->append(data,size);
     }
     int LogWriter::flush() {
-        int ret = write(log_fd_,buf,buf_offset);
-        assert(ret==buf_offset);
-        if(ret==buf_offset)buf_offset=0;
-        return ret;
+        return writer->flush();
+    }
+    int LogWriter::sync() {
+        return writer->sync();
     }
 }
