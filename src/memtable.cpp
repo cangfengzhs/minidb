@@ -29,4 +29,14 @@ namespace minidb {
         }
         return nullptr;
     }
+    MemTable::Iterator MemTable::iterator() {
+        return Iterator(skiplist_.iterator());
+    }
+    MemTable::Iterator::Iterator(minidb::SkipList<minidb::ptr<minidb::Record>>::Iterator it):iter(it) {}
+    bool MemTable::Iterator::hash_next() {
+        return iter.hash_next();
+    }
+    ptr<class minidb::Record> MemTable::Iterator::next() {
+        return iter.next();
+    }
 }

@@ -18,6 +18,15 @@ namespace minidb{
         int size();
         void set(ptr<Slice> user_key,LogSeqNumber lsn,KeyType type,ptr<Slice> value);
         ptr<Slice> get(ptr<Slice> user_key,LogSeqNumber lsn);
+        class Iterator{
+            SkipList<ptr<Record>>::Iterator iter;
+            Iterator(SkipList<ptr<Record>>::Iterator iter);
+            friend class MemTable;
+        public:
+            bool hash_next();
+            ptr<Record> next();
+        };
+        Iterator iterator();
     };
 
 }

@@ -106,6 +106,28 @@ namespace minidb {
             }
             return x->key;
         }
+        class Iterator{
+            ptr<Node> current;
+            friend class SkipList;
+            Iterator(ptr<Node> x){
+                current=x;
+            }
+        public:
+            bool hash_next(){
+                return current!= nullptr&&current->right!= nullptr;
+            }
+            Key next(){
+                current = current->right;
+                return current->key;
+            }
+        };
+        Iterator iterator(){
+            ptr<Node> x= nullptr;
+            if(pre_.size()>0){
+                x=pre_.front();
+            }
+            return Iterator(x);
+        }
     };
 }
 
