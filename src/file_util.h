@@ -10,6 +10,8 @@
 namespace minidb{
     void create_dir(const std::string& dir_name);
     int create_file(const std::string& file_name);
+    int get_version_pointer(const std::string& db_name);
+    int set_version_pointer(const std::string& db_name,int version_fd);
     std::string fn_fmt(int file_number);
     struct FileMeta{
         std::string file_name;
@@ -25,9 +27,9 @@ namespace minidb{
     class BufWriter{
         char buf[8192];
         int buf_offset;
-        FileMeta filemeta;
         uint64_t size_;
     public:
+        FileMeta filemeta;
         BufWriter(const std::string& file_name,bool end_with_magic,bool cover);
         int append(const char* data,int size);
         int append(void* data,int size);
@@ -51,6 +53,7 @@ namespace minidb{
         int remove();
         int seek(uint64_t offset);
         int size();
+        int remain();
         char* base();
         ~MmapReader();
     };

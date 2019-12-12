@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include "file_util.h"
 #include "config.h"
+#include "log.h"
 #include <unistd.h>
 #include <cstdio>
 namespace minidb {
@@ -17,13 +18,28 @@ namespace minidb {
             //TODO throw exception
         }
     }
-
-    int create_file(const std::string &file_name) {
-        int fd = open(file_name.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0644);
-        if (fd == -1) {
+    int get_version_pointer(const std::string& db_name){
+        int fd = open((db_name+"/version_pointer").c_str(),O_RDONLY);
+        if(fd==-1){
             //TODO throw exception
         }
-        return fd;
+        int version_fn;
+        uint64_t magic;
+        read(fd,&version_fn,4);
+        read(fd,&magic,8);
+        assert(magic==config::MAGIC);
+        close(fd);
+        return version_fn;
+    }
+    int set_version_pointer(const std::string& db_name,int version_fn){
+        int fd=open((db_name+"/version_pointer").c_str(),O_WRONLY|O_CREAT|O_TRUNC,0644);
+        if(fd==-1){
+            //TODO throw exception
+        }
+        write(fd,&version_fn,4);
+        write(fd,&config::MAGIC,8);
+        close(fd);
+        return 0;
     }
 
     std::string fn_fmt(int file_number) {
@@ -103,7 +119,7 @@ namespace minidb {
         filemeta.file_name=file_name;
         int fd = open(file_name.c_str(),O_RDONLY);
         if(fd==-1){
-            //TODO throw exception
+            log_error("open file:%s failed",file_name.c_str());
         }
         file_size = lseek(fd,0,SEEK_END);
         size_=file_size;
@@ -112,6 +128,7 @@ namespace minidb {
             size_-=8;
             assert(config::MAGIC==*(uint64_t*)(data+size_));
         }
+        offset_=0;
         close(fd);
     }
     int MmapReader::size() {
@@ -137,11 +154,15 @@ namespace minidb {
     int MmapReader::read(char * dest, int size) {
         int i=0;
         for(i=0;i<size&&offset_<size_;i++){
-            dest[i]= data[offset_++];
+            char t = data[offset_++];
+            dest[i]= t;
         }
         return i;
     }
     MmapReader::~MmapReader(){
         munmap(base(),file_size);
+    }
+    int MmapReader::remain() {
+        return size_-offset_;
     }
 }

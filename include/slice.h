@@ -13,6 +13,7 @@ namespace minidb{
         std::string data_;
     public:
         Slice()= default;
+        Slice(int size);
         explicit Slice(const std::string& str);
         Slice(const char* start,const char* end);
         int size();

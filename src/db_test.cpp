@@ -4,34 +4,41 @@
 
 #include "db.h"
 #include "slice.h"
-#include <sstream>
 #include <cassert>
 #include <iostream>
+#include "timer.h"
+#include "log.h"
 using namespace std;
 using namespace minidb;
-
 int main(){
+
     DB db = DB::create("test_db");
-    cout<<"start set 1\n";
-    for(int i=0;i<100;i++){
+    log_info("start set 1");
+    log_warn("test warning");
+    log_error("test error");
+    log_debug("test debug");
+    for(int i=0;i<1000000;i++){
         string key = to_string(i);
         string value = to_string(i*2);
         db.set(make_shared<Slice>(key),make_shared<Slice>(value));
+        if(i%100000==0){
+            timer::print();
+        }
     }
-    cout<<"start set 2\n";
-    for(int i=0;i<100;i+=2){
+    log_info("start set 2");
+    for(int i=0;i<1000000;i+=2){
         string key = std::to_string(i);
         string value = std::to_string(i*4);
         db.set(make_shared<Slice>(key),make_shared<Slice>(value));
     }
     cout<<"start delete\n";
-    for(int i=0;i<100;i+=4){
+    for(int i=0;i<1000000;i+=4){
         cout<<"delete "<<i<<endl;
         string key = std::to_string(i);
         db.remove(make_shared<Slice>(key));
     }
     cout << "start get\n";
-    for(int i=0;i<100;i++){
+    for(int i=0;i<1000000;i++){
         string key = to_string(i);
         shared_ptr<Slice> value;
         if(i%4==0){

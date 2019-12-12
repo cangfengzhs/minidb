@@ -21,4 +21,6 @@ namespace minidb{
     bool Slice::operator==(const minidb::Slice &ref) const {
         return data_==ref.data_;
     }
+
+    Slice::Slice(int size):data_(size,0) {}
 }

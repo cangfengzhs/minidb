@@ -7,8 +7,8 @@
 
 
 namespace minidb::config{
-    const int SKIPLIST_MAX_LEVEL = 5;
-    const int MEMTABLE_MAX_SIZE = 512*1024;
+    const int SKIPLIST_MAX_LEVEL = 20;
+    const int MEMTABLE_MAX_SIZE = 4*1024*1024;
     const int LOG_BUF_SIZE = 2*1024;
     const uint64_t MAGIC=0x0123456789abcdef;
     const int BLOCK_SIZE=8*1024;

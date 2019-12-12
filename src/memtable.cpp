@@ -4,6 +4,8 @@
 
 #include "memtable.h"
 #include "comparator.h"
+#include "timer.h"
+#include "error.h"
 namespace minidb {
     MemTable::MemTable() : size_(0), skiplist_(record_comparator) {}
 
@@ -19,13 +21,23 @@ namespace minidb {
             size_+=value->size();
         }
         ptr<Record> record = make_ptr<Record>(user_key,lsn,type,value);
+        timer::start("skiplist add");
         skiplist_.add(record);
+        timer::end("skiplist add");
     }
     ptr<Slice> MemTable::get(minidb::ptr<minidb::Slice> user_key, minidb::LogSeqNumber lsn) {
         ptr<Record> record = make_ptr<Record>(user_key,lsn,KeyType::LOOKUP, nullptr);
-        auto ret_record = skiplist_.seek(record);
+        ptr<Record> ret_record;
+        try {
+            ret_record = skiplist_.seek(record);
+        }catch(const KeyNotFound<ptr<Record>>& err){
+            ret_record= nullptr;
+        }
         if(ret_record && ret_record->type()==KeyType::INSERT &&userkey_comparator(ret_record->user_key(),user_key)==0){
             return ret_record->value();
+        }
+        if(ret_record&&ret_record->type()==KeyType::DELETE&&userkey_comparator(ret_record->user_key(),user_key)==0){
+            return make_ptr<Slice>(0);
         }
         return nullptr;
     }

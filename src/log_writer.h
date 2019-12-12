@@ -10,9 +10,12 @@
 #include "record.h"
 #include "config.h"
 #include "file_util.h"
+#include "memtable.h"
 namespace minidb{
     class LogWriter{
         ptr<BufWriter> writer;
+        int file_number_;
+        LogSeqNumber max_lsn_;
         inline void buf_append(Checksum checksum);
         inline void buf_append(int size);
         inline void buf_append(ptr<Slice> slice);
@@ -22,8 +25,11 @@ namespace minidb{
     public:
         LogWriter(const std::string& db_name,int file_number,bool create);
         void append(ptr<Record> record);
+        int file_number();
+        LogSeqNumber max_lsn();
         int flush();
         int sync();
+        int remove();
     };
 }
 #endif //MINIDB_LOG_WRITER_H

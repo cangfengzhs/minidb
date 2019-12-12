@@ -62,7 +62,6 @@ namespace minidb{
             }
         }
         writer->append(&root_offset,8);
-        printf("write: root offset %llu\n",root_offset);
         writer->append((char*)(&config::MAGIC),8);
         writer->sync();
         writer->close();
