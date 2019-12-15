@@ -11,6 +11,7 @@
 namespace minidb{
     class BlockBuilder;
     class SSTableBuilder{
+        ptr<Record> min_record;
         //多级index
         vec<ptr<BlockBuilder>> index_block_list;
         ptr<BlockBuilder> data_block;

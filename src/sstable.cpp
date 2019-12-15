@@ -6,6 +6,7 @@
 #include "config.h"
 #include "comparator.h"
 #include <cassert>
+#include <utility>
 
 namespace minidb {
     int SSTable::remove() {
@@ -18,6 +19,13 @@ namespace minidb {
         reader->seek(size - 8);
         uint64_t root_block_offset;
         reader->read(&root_block_offset, 8);
+        int x;
+        reader->read(&x,4);
+        ptr<Slice> user_key = make_ptr<Slice>(x);
+        reader->read((void *) user_key->data(), x);
+        LogSeqNumber lsn;
+        reader->read(&lsn,8);
+        min_record=make_ptr<Record>(user_key,lsn,KeyType::LOOKUP, nullptr);
         root = make_ptr<Block>((char *) (reader->base() + root_block_offset));
     }
 
@@ -29,6 +37,9 @@ namespace minidb {
         return file_number_;
     }
     ptr<Record> SSTable::lower_bound(ptr<Record> lookup) {
+        if(record_comparator(lookup,min_record)<0){
+            return nullptr;
+        }
         ptr<Block> blk = root;
         ptr<Record> ret;
         for (;;) {
@@ -39,9 +50,38 @@ namespace minidb {
                 break;
             }
         }
+        if(ret== nullptr){
+            miss_times_++;
+        }
         return ret;
     }
+    SSTable::Iterator::Iterator(minidb::ptr<minidb::SSTable> sst) {
+        this->sst=sst;
+        block_stack.push(sst->root->iterator());
+    }
+    bool SSTable::Iterator::has_next() {
+        return !block_stack.empty();
+    }
+    ptr<class minidb::Record> SSTable::Iterator::next() {
+        for(;;) {
+            Block::Iterator &iter = block_stack.top();
+            if(iter.hash_next()){
+                ptr<Record> ret = iter.next();
+                if(ret->type()==KeyType::OFFSET){
+                    block_stack.push(Block((char *) (sst->reader->base() + *(uint64_t *) (ret->value()->data()))).iterator());
+                }
+                else{
+                    return ret;
+                }
+            }else{
+                block_stack.pop();
+                if(block_stack.empty()){
+                    return nullptr;
+                }
+            }
+        }
 
+    }
     Block::Block(char *base) {
         base_ = base;
         record_offset_array_offset = *(uint16_t *) (base + config::BLOCK_SIZE - 4);
@@ -65,5 +105,17 @@ namespace minidb {
             }
         }
         return ret;
+    }
+    Block::Iterator::Iterator(minidb::ptr<minidb::Block> blk) {
+        this->block=blk;
+        block=std::move(blk);
+        index=0;
+    }
+    bool Block::Iterator::hash_next() {
+        return index<block->record_offset_array_size;
+    }
+    ptr<class minidb::Record> Block::Iterator::next() {
+        assert(index>=block->record_offset_array_size);
+        return make_ptr<Record>(block->record_offset_array[index++]+block->base_, false);
     }
 }

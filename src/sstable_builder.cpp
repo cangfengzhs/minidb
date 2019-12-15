@@ -13,6 +13,9 @@ namespace minidb{
         data_block = make_ptr<BlockBuilder>();
     }
     int SSTableBuilder::add_index(minidb::ptr<minidb::Record> record,int index_level) {
+        if(min_record== nullptr){
+            min_record=record;
+        }
         if(index_block_list.size()<=index_level){
             index_block_list.emplace_back(make_ptr<BlockBuilder>());
         }
@@ -61,7 +64,15 @@ namespace minidb{
                 block->dump(writer);
             }
         }
+        //记录根节点offset
         writer->append(&root_offset,8);
+        //记录最小user_key以及对应的lsn
+        int x = min_record->user_key()->size();
+        writer->append(&x,4);
+        writer->append(min_record->user_key()->data(),x);
+        LogSeqNumber lsn = min_record->lsn();
+        writer->append(&lsn,8);
+        //写入magic
         writer->append((char*)(&config::MAGIC),8);
         writer->sync();
         writer->close();
