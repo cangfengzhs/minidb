@@ -21,11 +21,11 @@ namespace minidb {
         reader->read(&root_block_offset, 8);
         int x;
         reader->read(&x,4);
-        ptr<Slice> user_key = make_ptr<Slice>(x);
-        reader->read((void *) user_key->data(), x);
-        LogSeqNumber lsn;
-        reader->read(&lsn,8);
-        min_record=make_ptr<Record>(user_key,lsn,KeyType::LOOKUP, nullptr);
+        min_user_key = make_ptr<Slice>(x);
+        reader->read((void *) min_user_key->data(), x);
+        reader->read(&x,4);
+        max_user_key = make_ptr<Slice>(x);
+        reader->read((void*)max_user_key->data(),x);
         root = make_ptr<Block>((char *) (reader->base() + root_block_offset));
     }
 
@@ -37,7 +37,10 @@ namespace minidb {
         return file_number_;
     }
     ptr<Record> SSTable::lower_bound(ptr<Record> lookup) {
-        if(record_comparator(lookup,min_record)<0){
+        if(userkey_comparator(lookup->user_key(),min_user_key)<0){
+            return nullptr;
+        }
+        if(userkey_comparator(lookup->user_key(),max_user_key)>0){
             return nullptr;
         }
         ptr<Block> blk = root;
@@ -55,6 +58,15 @@ namespace minidb {
         }
         return ret;
     }
+
+    int SSTable::miss_times() {
+        return miss_times_;
+    }
+
+    bool SSTable::wait_compact() {
+        return wait_compact_;
+    }
+
     SSTable::Iterator::Iterator(minidb::ptr<minidb::SSTable> sst) {
         this->sst=sst;
         block_stack.push(sst->root->iterator());

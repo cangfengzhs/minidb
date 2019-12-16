@@ -37,11 +37,14 @@ namespace minidb{
         ptr<Block> root;
         int file_number_;
         int miss_times_=0;
+        bool wait_compact_= false;
         SSTable(const std::string& file_name);
     public:
-        ptr<Record> min_record;
-        ptr<Record> max_record;
+        ptr<Slice> min_user_key;
+        ptr<Slice> max_user_key;
         int file_number();
+        int miss_times();
+        bool wait_compact();
         SSTable(const std::string& db_name,int file_number);
         ptr<Record> lower_bound(ptr<Record> lookup);
         int remove();
