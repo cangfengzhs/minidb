@@ -25,7 +25,7 @@ namespace minidb {
         skiplist_.add(record);
         timer::end("skiplist add");
     }
-    ptr<Slice> MemTable::get(minidb::ptr<minidb::Slice> user_key, minidb::LogSeqNumber lsn) {
+    ptr<Record> MemTable::get(minidb::ptr<minidb::Slice> user_key, minidb::LogSeqNumber lsn) {
         ptr<Record> record = make_ptr<Record>(user_key,lsn,KeyType::LOOKUP, nullptr);
         ptr<Record> ret_record;
         try {
@@ -33,11 +33,8 @@ namespace minidb {
         }catch(const KeyNotFound<ptr<Record>>& err){
             ret_record= nullptr;
         }
-        if(ret_record && ret_record->type()==KeyType::INSERT &&userkey_comparator(ret_record->user_key(),user_key)==0){
-            return ret_record->value();
-        }
-        if(ret_record&&ret_record->type()==KeyType::DELETE&&userkey_comparator(ret_record->user_key(),user_key)==0){
-            return make_ptr<Slice>(0);
+        if(ret_record && userkey_comparator(ret_record->user_key(),user_key)==0){
+            return ret_record;
         }
         return nullptr;
     }

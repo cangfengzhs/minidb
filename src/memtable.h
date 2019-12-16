@@ -17,7 +17,7 @@ namespace minidb{
         MemTable();
         int size();
         void set(ptr<Slice> user_key,LogSeqNumber lsn,KeyType type,ptr<Slice> value);
-        ptr<Slice> get(ptr<Slice> user_key,LogSeqNumber lsn);
+        ptr<Record> get(ptr<Slice> user_key,LogSeqNumber lsn);
         class Iterator{
             SkipList<ptr<Record>>::Iterator iter;
             Iterator(SkipList<ptr<Record>>::Iterator iter);
