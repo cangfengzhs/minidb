@@ -22,6 +22,7 @@ namespace minidb{
         SSTableBuilder(const std::string& db_name,int file_number);
         int add_record(ptr<Record> record);
         int finish();
+        uint64_t size();
     };
     class BlockBuilder{
         vec<ptr<Record>> record_list;

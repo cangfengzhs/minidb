@@ -85,6 +85,11 @@ namespace minidb{
         ptr<Record> index_record = make_ptr<Record>(r->user_key(),r->lsn(),KeyType::OFFSET,make_ptr<Slice>(data,data+8));
         return index_record;
     }
+
+    uint64_t SSTableBuilder::size() {
+        return writer->size();
+    }
+
     bool BlockBuilder::empty() {
         return record_list.empty();
     }
