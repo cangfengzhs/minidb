@@ -14,7 +14,6 @@
 #include <cassert>
 #include <functional>
 #include <iostream>
-
 namespace minidb {
     /**
      * SkipList是一个只支持插入和查找的跳表（线程不安全）
@@ -22,28 +21,47 @@ namespace minidb {
      */
     template<typename Key>
     class SkipList {
+        //Node相关
         struct Node {
             Key key;
-            ptr<Node> right = nullptr;
-            ptr<Node> down = nullptr;
-
-            ~Node() {
-                right = nullptr;
-                down = nullptr;
-            }
+            Node* right = nullptr;
+            Node* down = nullptr;
         };
-
+        vec<Node*> node_pool_list;
+        Node* node_pool= nullptr;
+        int node_pool_head=0;
+        Node* alloc_node(){
+            if(node_pool== nullptr||node_pool_head==1024){
+                node_pool=new Node[1024];
+                node_pool_list.push_back(node_pool);
+                node_pool_head=0;
+            }
+            Node* ret = &node_pool[node_pool_head++];
+            return ret;
+        }
         //比较器
         std::function<int(const Key &, const Key &)> cmp_;
-        vec<ptr<Node>> pre_;
-        vec<int> level_add_cnt;
+        vec<Node*> pre_;
 
-        ptr<Node> _add(ptr<Node> pre, const Key &key, int cur_level, int ins_level, int &cnt) {
-            cnt++;
+        //获取一个插入level
+        unsigned int bits=0;
+        inline unsigned int next_add_level() {
+            bits++;
+            unsigned int ret=0;
+            while(ret<config::SKIPLIST_MAX_LEVEL&&((bits>>ret)&1)){
+                ret++;
+            }
+            if(ret==config::SKIPLIST_MAX_LEVEL){
+                ret--;
+                bits=0;
+            }
+            return ret;
+        }
+        Node* _add(Node* pre, const Key &key, int cur_level, int ins_level) {
             if (cur_level < 0) {
                 return nullptr;
             }
-            ptr<Node> x = pre->right;
+            Node* x = pre->right;
             int c = -1;
             while (x) {
                 c = cmp_(x->key, key);
@@ -56,9 +74,9 @@ namespace minidb {
                 }
             }
             assert(c != 0);
-            ptr<Node> down = _add(pre->down, key, cur_level - 1, ins_level, cnt);
+            Node* down = _add(pre->down, key, cur_level - 1, ins_level);
             if (cur_level <= ins_level) {
-                ptr<Node> ret = std::make_shared<Node>();
+                Node* ret = alloc_node();
                 pre->right = ret;
                 ret->down = down;
                 ret->key = key;
@@ -69,8 +87,8 @@ namespace minidb {
             }
         }
 
-        ptr<Node> _seek(ptr<Node> pre, const Key &key) {
-            ptr<Node> x = pre->right;
+        Node* _seek(Node* pre, const Key &key) {
+            Node* x = pre->right;
             int c = -1;
             while (x) {
                 c = cmp_(x->key, key);
@@ -92,10 +110,9 @@ namespace minidb {
     public:
         SkipList() = delete;
 
-        SkipList(std::function<int(const Key &, const Key &)> cmp) : cmp_(cmp), pre_(config::SKIPLIST_MAX_LEVEL),
-                                                                     level_add_cnt(config::SKIPLIST_MAX_LEVEL, 0) {
+        SkipList(std::function<int(const Key &, const Key &)> cmp) : cmp_(cmp), pre_(config::SKIPLIST_MAX_LEVEL){
             for (int i = 0; i < config::SKIPLIST_MAX_LEVEL; i++) {
-                pre_[i] = std::make_shared<Node>();
+                pre_[i] = alloc_node();
 
             }
             for (int i = 1; i < config::SKIPLIST_MAX_LEVEL; i++) {
@@ -106,48 +123,27 @@ namespace minidb {
 
         //防止析构递归爆栈
         ~SkipList() {
-            vec<ptr<Node>> node_list;
-            for (int i = 0; i < pre_.size(); i++) {
-                ptr<Node> pre = pre_[i];
-                while (pre) {
-                    node_list.push_back(pre->right);
-                    auto t = pre->right;
-                    pre->right = nullptr;
-                    pre = t;
-                }
-            }
-            for (int i = 0; i < node_list.size(); i++) {
-                node_list[i] = nullptr;
+            for(Node* np:node_pool_list){
+                delete [] np;
             }
         }
 
-        int next_add_level() {
-            int ret=0;
-            for(int i=0;i<config::SKIPLIST_MAX_LEVEL;i++){
-                if(level_add_cnt[i]>=2){
-                    ret=i+1;
-                    level_add_cnt[i]=0;
-                }else{
-                    level_add_cnt[i]++;
-                    break;
-                }
-            }
-            ret=ret==config::SKIPLIST_MAX_LEVEL?ret-1:ret;
-            return ret;
-        }
+
 
         void add(const Key &key) {
+            //timer::start("nxt add level");
             int ins_level = next_add_level();
-            ptr<Node> pre = pre_.back();
-            int cnt;
-            timer::start("skiplist real add");
-            _add(pre, key, config::SKIPLIST_MAX_LEVEL - 1, ins_level, cnt);
-            timer::end("skiplist real add");
+            //timer::end("nxt add level");
+
+            Node* pre = pre_.back();
+            //timer::start("skiplist real add");
+            _add(pre, key, config::SKIPLIST_MAX_LEVEL - 1, ins_level);
+            //timer::end("skiplist real add");
         }
 
         //查找第一个大于等于key的key
         Key seek(const Key &key) {
-            ptr<Node> x = _seek(pre_.back(), key);
+            Node* x = _seek(pre_.back(), key);
             if (x == nullptr) {
                 throw KeyNotFound<Key>(key);
             }
@@ -155,11 +151,11 @@ namespace minidb {
         }
 
         class Iterator {
-            ptr<Node> current;
+            Node* current;
 
             friend class SkipList;
 
-            Iterator(ptr<Node> x) {
+            Iterator(Node* x) {
                 current = x;
             }
 
@@ -175,7 +171,7 @@ namespace minidb {
         };
 
         Iterator iterator() {
-            ptr<Node> x = nullptr;
+            Node* x = nullptr;
             if (pre_.size() > 0) {
                 x = pre_.front();
             }
