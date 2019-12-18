@@ -16,15 +16,15 @@ namespace minidb{
     public:
         ConcurrentQueue():queue_(){}
         void push(const Key& key){
-            std::unique_lock lck(mut);
+            std::unique_lock<std::mutex> lck(mut);
             queue_.push(key);
         }
         Key& front(){
-            std::unique_lock lck(mut);
+            std::unique_lock<std::mutex> lck(mut);
             return queue_.front();
         }
         void pop(){
-            std::unique_lock lck(mut);
+            std::unique_lock<std::mutex> lck(mut);
             queue_.pop();
         }
         bool empty(){

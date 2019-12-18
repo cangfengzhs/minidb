@@ -13,19 +13,17 @@ namespace minidb {
         return size_;
     }
 
-    void MemTable::set(minidb::ptr<minidb::Slice> user_key, minidb::LogSeqNumber lsn, minidb::KeyType type,
-                       minidb::ptr<minidb::Slice> value) {
-        size_+=user_key->size();
-        size_+=9;
+    void MemTable::set(const minidb::ptr<minidb::Slice>& user_key, minidb::LogSeqNumber lsn, minidb::KeyType type,
+                       const minidb::ptr<minidb::Slice>& value) {
+        size_+=user_key->size()+9;
         if(value){
             size_+=value->size();
         }
-        ptr<Record> record = make_ptr<Record>(user_key,lsn,type,value);
-        timer::start("skiplist add");
-        skiplist_.add(record);
-        timer::end("skiplist add");
+        //timer::start("skiplist add");
+        skiplist_.add(make_ptr<Record>(user_key,lsn,type,value));
+        //timer::end("skiplist add");
     }
-    ptr<Record> MemTable::get(minidb::ptr<minidb::Slice> user_key, minidb::LogSeqNumber lsn) {
+    ptr<Record> MemTable::get(const minidb::ptr<minidb::Slice>& user_key, minidb::LogSeqNumber lsn) {
         ptr<Record> record = make_ptr<Record>(user_key,lsn,KeyType::LOOKUP, nullptr);
         ptr<Record> ret_record;
         try {

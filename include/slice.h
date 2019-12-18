@@ -16,8 +16,8 @@ namespace minidb{
         Slice(int size);
         explicit Slice(const std::string& str);
         Slice(const char* start,const char* end);
-        int size();
-        const char* data();
+        inline int size(){return data_.size();}
+        inline const char* data(){return data_.data();}
         bool operator==(const Slice& ref)const;
     };
 }

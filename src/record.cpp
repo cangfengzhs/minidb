@@ -19,9 +19,11 @@ namespace minidb{
         data+=8;
         type_ =*(KeyType*)data;
         data+=sizeof(KeyType);
-        int value_key_size = *(int*)data;
-        data+=4;
-        value_ = make_ptr<Slice>(data,data+value_key_size);
+        if(type_!=KeyType::DELETE) {
+            int value_key_size = *(int *) data;
+            data += 4;
+            value_ = make_ptr<Slice>(data, data + value_key_size);
+        }
     }
     Record::Record(minidb::ptr<minidb::Slice> user_key, minidb::LogSeqNumber lsn, minidb::KeyType type,
                    minidb::ptr<minidb::Slice> value):

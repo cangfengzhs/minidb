@@ -11,7 +11,8 @@
 namespace minidb{
     class BlockBuilder;
     class SSTableBuilder{
-        ptr<Record> min_record;
+        ptr<Slice> min_user_key;
+        ptr<Slice> max_user_key;
         //多级index
         vec<ptr<BlockBuilder>> index_block_list;
         ptr<BlockBuilder> data_block;

@@ -10,6 +10,7 @@
 #include "config.h"
 #include "log.h"
 #include <unistd.h>
+#include <error.h>
 #include <cstdio>
 namespace minidb {
     void create_dir(const std::string &dir_name) {
@@ -20,6 +21,7 @@ namespace minidb {
     }
     int get_version_pointer(const std::string& db_name){
         int fd = open((db_name+"/version_pointer").c_str(),O_RDONLY);
+        log_debug("[Version pointer] fd: %d",fd);
         if(fd==-1){
             //TODO throw exception
         }
@@ -33,11 +35,13 @@ namespace minidb {
     }
     int set_version_pointer(const std::string& db_name,int version_fn){
         int fd=open((db_name+"/version_pointer").c_str(),O_WRONLY|O_CREAT|O_TRUNC,0644);
+        log_debug("[Version pointer] fd: %d",fd);
         if(fd==-1){
             //TODO throw exception
         }
         write(fd,&version_fn,4);
         write(fd,&config::MAGIC,8);
+        ::fsync(fd);
         close(fd);
         return 0;
     }
@@ -58,6 +62,7 @@ namespace minidb {
         remove_flag = false;
     }
     FileMeta::~FileMeta(){
+        log_debug("[close fd] %d",fd);
         close(fd);
         if(remove_flag){
             remove(file_name.c_str());
@@ -73,6 +78,8 @@ namespace minidb {
             mod |= O_CREAT | O_TRUNC;
         }
         int fd = open(file_name.c_str(),mod,0644);
+        log_debug("buffer writer: file name %s,fd %d",file_name.c_str(),fd);
+        assert(fd!=-1);
         filemeta.file_name=file_name;
         filemeta.file_number=-1;
         filemeta.fd=fd;
@@ -80,6 +87,7 @@ namespace minidb {
         size_=0;
     }
     int BufWriter::remove() {
+        log_debug("[buf writer] remove file %s",filemeta.file_name.c_str());
         return filemeta.remove_file();
     }
     bool BufWriter::sync() {
@@ -104,6 +112,9 @@ namespace minidb {
     }
     bool BufWriter::flush() {
         int cnt = write(filemeta.fd,buf,buf_offset);
+        if(cnt!=buf_offset){
+            log_debug("[BufWriter]error no:%d",errno);
+        }
         assert(cnt==buf_offset);
         buf_offset=0;
         return true;
@@ -113,11 +124,13 @@ namespace minidb {
             flush();
         }
         sync();
+        ::close(filemeta.fd);
         return 0;
     }
     MmapReader::MmapReader(const std::string &file_name, bool end_with_magic) {
         filemeta.file_name=file_name;
         int fd = open(file_name.c_str(),O_RDONLY);
+        filemeta.fd=fd;
         if(fd==-1){
             log_error("open file:%s failed",file_name.c_str());
         }
@@ -129,7 +142,6 @@ namespace minidb {
             assert(config::MAGIC==*(uint64_t*)(data+size_));
         }
         offset_=0;
-        close(fd);
     }
     int MmapReader::size() {
         return size_;

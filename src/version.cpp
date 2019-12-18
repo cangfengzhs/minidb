@@ -28,15 +28,16 @@ namespace minidb {
             BufWriter writer(db_name + "/" + fn_fmt(file_number) + ".ver", true, true);
             int x = log_ ? log_->file_number() : -1;
             writer.append(&x, 4);
-            log_debug("new version log:%d",x);
+            log_debug("[new version] log:%d ",x);
             x = pre_log_ ? pre_log_->file_number() : -1;
             writer.append(&x, 4);
+            log_debug("[new version] pre log:%d",x);
             x=0;
             for(const auto& sst_set:sst_set_list_){
                 x+=sst_set.size();
             }
             writer.append(&x, 4);
-            log_debug("new version sst cnt:%d",x);
+            log_debug("[new version] sst cnt:%d",x);
             for(int i=0;i<sst_set_list_.size();i++){
                 for(const auto& sst:sst_set_list_[i]){
                     x = sst->file_number();
@@ -57,8 +58,8 @@ namespace minidb {
     ptr<class minidb::Version>
     Version::apply(ptr<class minidb::VersionEdit> edit, const std::string &db_name, int file_number) {
         LogSeqNumber lsn = this->lsn_;
-        ptr<LogWriter> log = edit->log_;
-        ptr<LogWriter> pre_log = edit->pre_log_;
+        ptr<LogWriter> log = edit->log_flag?edit->log_:log_;
+        ptr<LogWriter> pre_log = edit->pre_log_flag?edit->pre_log_:pre_log_;
         if (log) {
             lsn = max(lsn, log->max_lsn());
         }
@@ -67,9 +68,8 @@ namespace minidb {
         }
         SstSetList sst_set_list;
         for(int i=0;i<sst_set_list.size();i++){
-            std::set_difference(sst_set_list_[i].begin(),sst_set_list_[i].end(),
-                                edit->remove_sst_[i].begin(),edit->remove_sst_[i].end(),
-                                sst_set_list[i],sst_set_list[i].begin());
+            sst_set_list[i] = sst_set_list_[i];
+            for(const auto& rm_sst:edit->remove_sst_[i]){sst_set_list[i].erase(rm_sst);}
         }
         for(int i=0;i<sst_set_list.size();i++){
             sst_set_list[i].insert(edit->add_sst_[i].begin(),edit->add_sst_[i].end());
@@ -81,9 +81,11 @@ namespace minidb {
         add_sst_[level].insert(sst);
     }
     void VersionEdit::set_log(ptr<class minidb::LogWriter> log) {
+        log_flag=true;
         log_=std::move(log);
     }
     void VersionEdit::set_pre_log(ptr<class minidb::LogWriter> log) {
+        pre_log_flag=true;
         pre_log_=std::move(log);
     }
     void VersionEdit::remove_sst(const ptr<class minidb::SSTable>& sst, int level) {

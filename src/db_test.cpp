@@ -11,18 +11,21 @@
 using namespace std;
 using namespace minidb;
 int main(){
-
+    LOG::log_level=LOG::LogLevel::DEBUG;
     DB db = DB::create("test_db");
     log_info("start set 1");
     log_warn("test warning");
     log_error("test error");
     log_debug("test debug");
+    timer::start("per 100000");
     for(int i=0;i<1000000;i++){
         string key = to_string(i);
         string value = to_string(i*2);
         db.set(make_shared<Slice>(key),make_shared<Slice>(value));
-        if(i%100000==0){
+        if(i%100000==99999){
+            timer::end("per 100000");
             timer::print();
+            timer::start("per 100000");
         }
     }
     log_info("start set 2");
@@ -33,11 +36,11 @@ int main(){
     }
     cout<<"start delete\n";
     for(int i=0;i<1000000;i+=4){
-        cout<<"delete "<<i<<endl;
         string key = std::to_string(i);
         db.remove(make_shared<Slice>(key));
     }
     cout << "start get\n";
+    timer::start("get");
     for(int i=0;i<1000000;i++){
         string key = to_string(i);
         shared_ptr<Slice> value;
@@ -50,14 +53,16 @@ int main(){
         else{
             value = make_shared<Slice>(to_string(i*2));
         }
-        cout<<i<<":";
         auto ret = db.get(make_shared<Slice>(key));
+        if(i%100000==99999){
+            timer::end("get");
+            timer::print();
+            timer::start("get");
+        }
         if(ret==value||(ret&&value&&*ret==*value)){
-            cout<<"true"<<endl;
+            //cout<<"true"<<endl;
         }else{
-            cout<<"false"<<endl;
-            cout<<ret->data()<<endl;
-            cout<<value->data()<<endl;
+            assert(false);
         }
     }
     return 0;

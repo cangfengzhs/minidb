@@ -16,7 +16,7 @@ namespace minidb{
     struct FileMeta{
         std::string file_name;
         int file_number;
-        int fd;
+        int fd=-1;
         bool remove_flag=false;
         FileMeta()= default;
         FileMeta(const std::string& file_name,int file_number,int fd);

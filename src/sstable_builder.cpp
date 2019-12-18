@@ -13,9 +13,6 @@ namespace minidb{
         data_block = make_ptr<BlockBuilder>();
     }
     int SSTableBuilder::add_index(minidb::ptr<minidb::Record> record,int index_level) {
-        if(min_record== nullptr){
-            min_record=record;
-        }
         if(index_block_list.size()<=index_level){
             index_block_list.emplace_back(make_ptr<BlockBuilder>());
         }
@@ -32,6 +29,10 @@ namespace minidb{
         return 0;
     }
     int SSTableBuilder::add_record(ptr<class minidb::Record> record) {
+        if(min_user_key== nullptr){
+            min_user_key=record->user_key();
+        }
+        max_user_key=record->user_key();
         int ret = data_block->add_record(record);
         if(ret==0){
             return 0;
@@ -55,7 +56,6 @@ namespace minidb{
             }
             if(i==index_block_list.size()-1){
                 root_offset = writer->size();
-                printf("%llu",writer->size());
                 block->dump(writer);
             }
             else{
@@ -65,13 +65,16 @@ namespace minidb{
             }
         }
         //记录根节点offset
+        uint64_t metadata_offset=writer->size();
         writer->append(&root_offset,8);
-        //记录最小user_key以及对应的lsn
-        int x = min_record->user_key()->size();
+        //记录user_key 区间
+        int x = min_user_key->size();
         writer->append(&x,4);
-        writer->append(min_record->user_key()->data(),x);
-        LogSeqNumber lsn = min_record->lsn();
-        writer->append(&lsn,8);
+        writer->append(min_user_key->data(),x);
+        x = max_user_key->size();
+        writer->append(&x,4);
+        writer->append(max_user_key->data(),x);
+        writer->append(&metadata_offset,8);
         //写入magic
         writer->append((char*)(&config::MAGIC),8);
         writer->sync();
@@ -103,8 +106,11 @@ namespace minidb{
         return size_;
     }
     int BlockBuilder::add_record(ptr<class minidb::Record> record) {
-        int need = record->user_key()->size()+record->value()->size();
+        int need = record->user_key()->size();
         need+=4+8+sizeof(KeyType)+4+2;
+        if(record->value()){
+            need+=+record->value()->size();
+        }
         if(size_+need>config::BLOCK_SIZE){
             return -1;
         }
@@ -134,11 +140,13 @@ namespace minidb{
             KeyType type = record->type();
             writer->append(&type,sizeof(KeyType));
             cnt+=sizeof(KeyType);
-            size = record->value()->size();
-            writer->append(&size,4);
-            cnt+=4;
-            writer->append(record->value()->data(),record->value()->size());
-            cnt+=record->value()->size();
+            if(record->value()) {
+                size = record->value()->size();
+                writer->append(&size, 4);
+                cnt += 4;
+                writer->append(record->value()->data(), record->value()->size());
+                cnt += record->value()->size();
+            }
             offset+=cnt;
         }
         uint16_t record_offset_array_offset = offset;

@@ -22,7 +22,7 @@ public:
             if(!durations.count(name)){
                 durations[name]=std::vector<double>();
             }
-            durations[name].push_back(double(clock()-starts[name])/1000);
+            durations[name].push_back(double(clock()-starts[name])/CLOCKS_PER_SEC);
             starts.erase(name);
         }
     }
@@ -36,7 +36,7 @@ public:
                 total+=dur;
             }
             double avg = 1.0*total/cnt;
-            printf("Name: %s\tcount: %d\ttotal time: %.3f\tavg time: %.3f\n",name.c_str(),cnt,total,avg);
+            printf("Name: %s\tcount: %d\ttotal time: %.4f\tavg time: %.4f\n",name.c_str(),cnt,total,avg);
         }
     }
 };

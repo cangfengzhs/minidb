@@ -52,6 +52,8 @@ namespace minidb{
     class VersionEdit{
         ptr<LogWriter> log_= nullptr;
         ptr<LogWriter> pre_log_= nullptr;
+        bool log_flag=false;
+        bool pre_log_flag= false;
         SstSetList add_sst_;
         SstSetList remove_sst_;
         friend class Version;

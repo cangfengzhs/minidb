@@ -18,7 +18,10 @@ namespace minidb {
         int size = reader->size();
         reader->seek(size - 8);
         uint64_t root_block_offset;
-        reader->read(&root_block_offset, 8);
+        uint64_t metadata_offset;
+        reader->read(&metadata_offset, 8);
+        reader->seek(metadata_offset);
+        reader->read(&root_block_offset,8);
         int x;
         reader->read(&x,4);
         min_user_key = make_ptr<Slice>(x);
@@ -80,7 +83,8 @@ namespace minidb {
             if(iter.hash_next()){
                 ptr<Record> ret = iter.next();
                 if(ret->type()==KeyType::OFFSET){
-                    block_stack.push(Block((char *) (sst->reader->base() + *(uint64_t *) (ret->value()->data()))).iterator());
+                    ptr<Block> blk = make_ptr<Block>((char *) (sst->reader->base() + *(uint64_t *) (ret->value()->data())));
+                    block_stack.emplace(blk->iterator());
                 }
                 else{
                     return ret;
@@ -127,7 +131,7 @@ namespace minidb {
         return index<block->record_offset_array_size;
     }
     ptr<class minidb::Record> Block::Iterator::next() {
-        assert(index>=block->record_offset_array_size);
+        assert(index<block->record_offset_array_size);
         return make_ptr<Record>(block->record_offset_array[index++]+block->base_, false);
     }
 }
