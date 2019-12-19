@@ -24,8 +24,12 @@ namespace minidb{
             Iterator(ptr<Block> blk);
             friend class Block;
         public:
-            bool hash_next();
-            ptr<Record> next();
+            inline bool hash_next() {
+                return index<block->record_offset_array_size;
+            }
+            inline ptr<class minidb::Record> next() {
+                return make_ptr<Record>(block->record_offset_array[index++]+block->base_, false);
+            }
         };
         Iterator iterator(){
             return Iterator(this->shared_from_this());
@@ -51,16 +55,18 @@ namespace minidb{
         class Iterator{
             ptr<SSTable> sst;
             std::stack<Block::Iterator> block_stack;
-            Iterator(ptr<SSTable> sst);
+            Iterator(const ptr<SSTable>& sst);
             friend class SSTable;
         public:
-            bool has_next();
+            inline bool has_next();
             ptr<Record> next();
         };
         Iterator iterator(){
             return Iterator(this->shared_from_this());
         }
     };
-
+    bool SSTable::Iterator::has_next() {
+        return !block_stack.empty();
+    }
 }
 #endif //MINIDB_SSTABLE_H

@@ -10,14 +10,25 @@
 namespace minidb{
     class MergeHeap{
         using Node = std::pair<ptr<Record>,SSTable::Iterator>;
-        bool init_flag= false;
-        vec<int> heap_array_index;
         vec<Node> heap_array;
+        vec<bool> iter_end_flag;
     public:
         void add_sst(const ptr<SSTable>& sst);
         void init();
-        bool empty();
+        inline bool empty();
         ptr<Record> pop();
     };
+    bool MergeHeap::empty() {
+        if(heap_array.empty()){
+            return true;
+        }
+        for(auto flag:iter_end_flag){
+            if(!flag){
+                return false;
+            }
+        }
+        return true;
+    }
 }
+
 #endif //MINIDB_MERGE_HEAP_H

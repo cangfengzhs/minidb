@@ -70,30 +70,24 @@ namespace minidb {
         return wait_compact_;
     }
 
-    SSTable::Iterator::Iterator(minidb::ptr<minidb::SSTable> sst) {
+    SSTable::Iterator::Iterator(const minidb::ptr<minidb::SSTable>& sst) {
         this->sst=sst;
         block_stack.push(sst->root->iterator());
     }
-    bool SSTable::Iterator::has_next() {
-        return !block_stack.empty();
-    }
+
     ptr<class minidb::Record> SSTable::Iterator::next() {
         for(;;) {
             Block::Iterator &iter = block_stack.top();
-            if(iter.hash_next()){
-                ptr<Record> ret = iter.next();
-                if(ret->type()==KeyType::OFFSET){
-                    ptr<Block> blk = make_ptr<Block>((char *) (sst->reader->base() + *(uint64_t *) (ret->value()->data())));
-                    block_stack.emplace(blk->iterator());
+            ptr<Record> ret = iter.next();
+            if(ret->type()==KeyType::OFFSET){
+                ptr<Block> blk = make_ptr<Block>((char *) (sst->reader->base() + *(uint64_t *) (ret->value()->data())));
+                block_stack.emplace(blk->iterator());
+            }
+            else{
+                while(!block_stack.empty()&&!block_stack.top().hash_next()){
+                    block_stack.pop();
                 }
-                else{
-                    return ret;
-                }
-            }else{
-                block_stack.pop();
-                if(block_stack.empty()){
-                    return nullptr;
-                }
+                return ret;
             }
         }
 
@@ -123,15 +117,8 @@ namespace minidb {
         return ret;
     }
     Block::Iterator::Iterator(minidb::ptr<minidb::Block> blk) {
-        this->block=blk;
         block=std::move(blk);
         index=0;
     }
-    bool Block::Iterator::hash_next() {
-        return index<block->record_offset_array_size;
-    }
-    ptr<class minidb::Record> Block::Iterator::next() {
-        assert(index<block->record_offset_array_size);
-        return make_ptr<Record>(block->record_offset_array[index++]+block->base_, false);
-    }
+
 }

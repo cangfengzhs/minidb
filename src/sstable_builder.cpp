@@ -98,7 +98,6 @@ namespace minidb{
     }
     ptr<class minidb::Record> BlockBuilder::max_record() {
         int s = record_list.size();
-        assert(s>0);
         ptr<Record> ret = record_list[s-1];
         return ret;
     }
