@@ -32,6 +32,7 @@ class DBImpl:public std::enable_shared_from_this<DBImpl>{
         bool stop_;
         static void _start_compact_thread(ptr<DBImpl> db);
         void write(const ptr<Slice>& user_key,KeyType key_type,const ptr<Slice>& value);
+        int exchange_version(ptr<Version> new_ver,int new_ver_fn);
 public:
         explicit DBImpl(std::string  dn_name);
         static ptr<DBImpl> open(const std::string& db_name);

@@ -69,7 +69,10 @@ namespace minidb {
         SstSetList sst_set_list;
         for(int i=0;i<sst_set_list.size();i++){
             sst_set_list[i] = sst_set_list_[i];
-            for(const auto& rm_sst:edit->remove_sst_[i]){sst_set_list[i].erase(rm_sst);}
+            for(const auto& rm_sst:edit->remove_sst_[i]){
+                sst_set_list[i].erase(rm_sst);
+                rm_sst->remove();
+            }
         }
         for(int i=0;i<sst_set_list.size();i++){
             sst_set_list[i].insert(edit->add_sst_[i].begin(),edit->add_sst_[i].end());
@@ -77,6 +80,24 @@ namespace minidb {
         ptr<Version> new_version = make_ptr<Version>(log, pre_log, sst_set_list, lsn, db_name, file_number, true);
         return new_version;
     }
+
+    void Version::print() {
+        printf("============================================================\n");
+        printf("Version: %s\n",filemeta.file_name.c_str());
+        if(log_)printf("LOG: %d\n",log_->file_number());
+        else printf("LOG: nullptr\n");
+        if(pre_log_)printf("PRE LOG: %d\n",pre_log_->file_number());
+        else printf("PRE LOG: nullptr\n");
+        for(int i=0;i<sst_set_list_.size();i++){
+            printf("SST LEVEL %d:",i);
+            for(auto sst:sst_set_list_[i]){
+                printf("%d\t",sst->file_number());
+            }
+            printf("\n");
+        }
+        printf("============================================================\n");
+    }
+
     void VersionEdit::add_sst(const ptr<class minidb::SSTable>& sst, int level) {
         add_sst_[level].insert(sst);
     }

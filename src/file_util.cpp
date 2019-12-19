@@ -78,7 +78,7 @@ namespace minidb {
             mod |= O_CREAT | O_TRUNC;
         }
         int fd = open(file_name.c_str(),mod,0644);
-        log_debug("buffer writer: file name %s,fd %d",file_name.c_str(),fd);
+        log_debug("open fd:%d",fd);
         assert(fd!=-1);
         filemeta.file_name=file_name;
         filemeta.file_number=-1;
@@ -124,12 +124,12 @@ namespace minidb {
             flush();
         }
         sync();
-        ::close(filemeta.fd);
         return 0;
     }
     MmapReader::MmapReader(const std::string &file_name, bool end_with_magic) {
         filemeta.file_name=file_name;
         int fd = open(file_name.c_str(),O_RDONLY);
+        log_debug("open fd:%d",fd);
         filemeta.fd=fd;
         if(fd==-1){
             log_error("open file:%s failed",file_name.c_str());

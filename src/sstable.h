@@ -17,7 +17,7 @@ namespace minidb{
         uint16_t record_offset_array_size;
     public:
         Block(char* base);
-        ptr<Record> lower_bound(ptr<Record> lookup);
+        ptr<Record> lower_bound(const ptr<Record>& lookup);
         class Iterator{
             ptr<Block> block;
             int index;
@@ -46,7 +46,7 @@ namespace minidb{
         int miss_times();
         bool wait_compact();
         SSTable(const std::string& db_name,int file_number);
-        ptr<Record> lower_bound(ptr<Record> lookup);
+        ptr<Record> lower_bound(const ptr<Record>& lookup);
         int remove();
         class Iterator{
             ptr<SSTable> sst;

@@ -7,6 +7,7 @@
 #include "file_util.h"
 #include "sstable_builder.h"
 #include "timer.h"
+#include "merge_heap.h"
 #include "log.h"
 #include <algorithm>
 #include <condition_variable>
@@ -132,10 +133,9 @@ namespace minidb {
             ptr<VersionEdit> edit = make_ptr<VersionEdit>();
             edit->set_pre_log(version_->log_);
             edit->set_log(make_ptr<LogWriter>(db_name_,file_number_++, true));
-            auto new_ver = version_->apply(edit,db_name_,file_number_++);
-            version_->remove();
-            version_=new_ver;
-            set_version_pointer(db_name_,file_number_);
+            int new_ver_fn = file_number_++;
+            auto new_ver = version_->apply(edit,db_name_,new_ver_fn);
+            exchange_version(new_ver,new_ver_fn);
             memtable_=make_ptr<MemTable>();
             compact_task_queue.push(-1);
         }
@@ -188,7 +188,7 @@ namespace minidb {
                 continue;
             }
             if(userkey_comparator(tmp->user_key(),lookup->user_key())==0){
-                if(res== nullptr){
+                if(res==nullptr){
                     res=tmp;
                 }else if(tmp->lsn()>res->lsn()){
                     res = tmp;
@@ -199,22 +199,28 @@ namespace minidb {
         ptr<Record> res2;
         for(int i=1;i<sst_set_list.size()&&res2== nullptr;i++){
             for(const auto& sst:sst_set_list[i]){
-                res2 = sst->lower_bound(lookup);
+                auto tmp = sst->lower_bound(lookup);
                 //TODO incr miss count
                 if(!sst->wait_compact()&&sst->miss_times()>=config::MAX_MISS_TIMES){
                     //TODO set sst wait compact
                     compact_task_queue.push(i);
                 }
-                if(res2!= nullptr){
+                if(tmp== nullptr){
+                    continue;
+                }
+                if(userkey_comparator(tmp->user_key(),lookup->user_key())==0){
+                    res2 = tmp;
                     break;
                 }
             }
         }
-        if(res&&userkey_comparator(res->user_key(),key)==0){
-            ret = res;
-        }
-        if(res2&&userkey_comparator(res2->user_key(),key)==0&&res2->lsn()>res->lsn()){
-            ret = res;
+        ret = res;
+        if(res2){
+            if(ret== nullptr){
+                ret = res2;
+            }else if(res2->lsn()>ret->lsn()){
+                ret = res2;
+            }
         }
         do_compact(false);
         if(ret== nullptr||ret->type()==KeyType::DELETE){
@@ -242,13 +248,13 @@ namespace minidb {
         version_edit->set_pre_log(nullptr);
         version_edit->add_sst(s,0);
         int new_ver_fn = file_number_++;
-        version_->remove();
-        version_=version_->apply(version_edit,db_name_,new_ver_fn);
+        auto new_ver = version_->apply(version_edit,db_name_,new_ver_fn);
+        exchange_version(new_ver,new_ver_fn);
         immu_memtable_= nullptr;
         set_version_pointer(db_name_,new_ver_fn);
-//        if(version_->sst_set_list_[0].size()>=config::SSTABLE_MAX_FILE_COUNT){
-//            compact_task_queue.push(0);
-//        }
+        if(version_->sst_set_list_[0].size()>=config::SSTABLE_MAX_FILE_COUNT){
+            compact_task_queue.push(0);
+        }
         return 0;
     }
     void DBImpl::stop() {
@@ -300,11 +306,25 @@ namespace minidb {
         }
         log_debug("major compact");
         ptr<Version> version = version_;
+        ptr<VersionEdit> edit = make_ptr<VersionEdit>();
+        //获取level级要compact的sst
         SSTableSet sst_set;
         for(const auto& sst:version->sst_set_list_[level]){
-            if(sst->wait_compact()){sst_set.insert(sst);}
+            if(sst->wait_compact()){
+                sst_set.insert(sst);
+                edit->remove_sst(sst,level);
+            }
         }
-        if(sst_set.empty()){sst_set.insert(*version->sst_set_list_[level].begin());}
+        if(sst_set.empty()){
+            int x = rand()%version->sst_set_list_[level].size();
+            auto iter = version->sst_set_list_[level].begin();
+            while(x--){
+                iter++;
+            }
+            edit->remove_sst(*iter,level);
+            sst_set.insert(*iter);
+        }
+        //根据level级的sst的key范围，选取level+1级的sst
         for(const auto& sst:version->sst_set_list_[level+1]){
             for(const auto& sst2:sst_set){
                 if(userkey_comparator(sst->min_user_key,sst2->max_user_key)==1||
@@ -312,64 +332,20 @@ namespace minidb {
                     continue;
                 }
                 sst_set.insert(sst);
+                edit->remove_sst(sst,level+1);
             }
         }
-        vec<SSTable::Iterator> iter_list;
-        vec<std::pair<ptr<Record>,int>> tmp;
-        //init
-        int i=0;
+        //对要合并的sst进行迭代（归并排序）
+        MergeHeap heap;
         for(const auto& sst:sst_set){
-            auto iter = sst->iterator();
-            tmp.push_back(std::make_pair(iter.next(),i++));
-            iter_list.emplace_back(iter);
+            heap.add_sst(sst);
         }
-        for(int i=tmp.size()-1;i>0;i--){
-            int p = (i-1)/2;
-            if(record_comparator(tmp[i].first,tmp[p].first)<0){
-                swap(tmp[i],tmp[p]);
-            }
-        }
-        auto get_next = [&tmp,&iter_list](){
-            ptr<Record> ret=  tmp[0].first;
-            if(ret== nullptr){
-                ret = nullptr;
-                return ret;
-            }
-            tmp[0].first=iter_list[tmp[0].second].has_next()?iter_list[tmp[0].second].next(): nullptr;
-            //maintain heap top
-            int c = 0;
-            while(true){
-                int swap_flag=0;//0 no 1 left 2 right
-                int l =c*2+1;
-                int r = c*2+2;
-                if(l<tmp.size()&&tmp[l].first!=nullptr&&(tmp[c].first==nullptr||record_comparator(tmp[l].first,tmp[c].first)==-1)){
-                    swap_flag=1;
-                }
-                if(r<tmp.size()&&tmp[r].first!= nullptr){
-                    int x = swap_flag==0?c:l;
-                    if(tmp[x].first==nullptr||record_comparator(tmp[l].first,tmp[x].first)==-1){
-                        swap_flag=2;
-                    }
-                }
-                if(swap_flag==0){
-                    break;
-                }else if(swap_flag==1){
-                    swap(tmp[c],tmp[l]);
-                    c = l;
-                }
-                else{
-                    swap(tmp[c],tmp[r]);
-                    c = r;
-                }
-            }
-            return ret;
-        };
-        ptr<VersionEdit> edit = make_ptr<VersionEdit>();
+        heap.init();
         int sst_fn=file_number_++;
         ptr<SSTableBuilder> sst_builder = make_ptr<SSTableBuilder>(db_name_,sst_fn);
         ptr<Record> last;
-        for(;;){
-            auto nxt = get_next();
+        while(!heap.empty()){
+            auto nxt = heap.pop();
             if(nxt== nullptr){
                 break;
             }
@@ -387,16 +363,21 @@ namespace minidb {
             }
         }
         sst_builder->finish();
-        for(const auto& sst:sst_set){
-            edit->remove_sst(sst,level);
-        }
-        auto new_ver = version_->apply(edit,db_name_,file_number_++);
-        set_version_pointer(db_name_,new_ver->filemeta.file_number);
-        version_->remove();
-        version_=new_ver;
+        edit->add_sst(make_ptr<SSTable>(db_name_,sst_fn),level+1);
+        int new_ver_fn = file_number_++;
+        auto new_ver = version_->apply(edit,db_name_,new_ver_fn);
+        exchange_version(new_ver,new_ver_fn);
         if(version_->sst_set_list_[level+1].size()>=config::SSTABLE_MAX_FILE_COUNT){
             compact_task_queue.push(level+1);
         }
+        return 0;
+    }
+
+    int DBImpl::exchange_version(ptr<Version> new_ver, int new_ver_fn) {
+        version_->remove();
+        version_=std::move(new_ver);
+        //version_->print();
+        set_version_pointer(db_name_,new_ver_fn);
         return 0;
     }
 

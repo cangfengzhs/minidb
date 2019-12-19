@@ -14,7 +14,7 @@ namespace minidb::config{
     const int MEMTABLE_MAX_SIZE = 4*1024*1024;
     const int LOG_BUF_SIZE = 2*1024;
     const uint64_t MAGIC=0x0123456789abcdef;
-    const int BLOCK_SIZE=8*1024;
+    const int BLOCK_SIZE=64*1024;
     const int MAX_MISS_TIMES = 1024*1024;
 }
 

@@ -39,7 +39,7 @@ namespace minidb {
     int SSTable::file_number() {
         return file_number_;
     }
-    ptr<Record> SSTable::lower_bound(ptr<Record> lookup) {
+    ptr<Record> SSTable::lower_bound(const ptr<Record>& lookup) {
         if(userkey_comparator(lookup->user_key(),min_user_key)<0){
             return nullptr;
         }
@@ -105,7 +105,7 @@ namespace minidb {
         record_offset_array = (uint16_t *) (base + record_offset_array_offset);
     }
 
-    ptr<Record> Block::lower_bound(ptr<class minidb::Record> lookup) {
+    ptr<Record> Block::lower_bound(const ptr<class minidb::Record>& lookup) {
         int L = 0;
         int R = record_offset_array_size - 1;
         ptr<Record> ret;

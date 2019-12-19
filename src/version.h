@@ -47,6 +47,7 @@ namespace minidb{
         //新建version并修改version pointer
         ptr<Version> apply(ptr<VersionEdit> edit,const std::string& db_name,int file_number);
         void remove();
+        void print();
     };
     
     class VersionEdit{

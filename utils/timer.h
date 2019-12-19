@@ -9,7 +9,7 @@
 #include <vector>
 #include <string>
 #include <ctime>
-
+#include <algorithm>
 class timer{
     static std::map<std::string,std::vector<double>> durations;
     static std::map<std::string,clock_t> starts;

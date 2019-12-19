@@ -11,14 +11,14 @@
 using namespace std;
 using namespace minidb;
 int main(){
-    LOG::log_level=LOG::LogLevel::DEBUG;
+    LOG::log_level=LOG::LogLevel::INFO;
     DB db = DB::create("test_db");
     log_info("start set 1");
     log_warn("test warning");
     log_error("test error");
     log_debug("test debug");
     timer::start("per 100000");
-    for(int i=0;i<1000000;i++){
+    for(int i=0;i<10000000;i++){
         string key = to_string(i);
         string value = to_string(i*2);
         db.set(make_shared<Slice>(key),make_shared<Slice>(value));
@@ -29,19 +29,22 @@ int main(){
         }
     }
     log_info("start set 2");
-    for(int i=0;i<1000000;i+=2){
+    for(int i=0;i<10000000;i+=2){
         string key = std::to_string(i);
         string value = std::to_string(i*4);
         db.set(make_shared<Slice>(key),make_shared<Slice>(value));
     }
-    cout<<"start delete\n";
-    for(int i=0;i<1000000;i+=4){
+    log_debug("start delete");
+    for(int i=0;i<10000000;i+=4){
+        if(i==8){
+            log_debug("tag:8");
+        }
         string key = std::to_string(i);
         db.remove(make_shared<Slice>(key));
     }
-    cout << "start get\n";
+    log_debug("start get");
     timer::start("get");
-    for(int i=0;i<1000000;i++){
+    for(int i=0;i<10000000;i++){
         string key = to_string(i);
         shared_ptr<Slice> value;
         if(i%4==0){
