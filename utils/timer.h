@@ -17,7 +17,7 @@ public:
     static void start(std::string name){
         starts[name]=clock();
     }
-    static void end(std::string name){
+    static inline void end(std::string name){
         if(starts.count(name)){
             if(!durations.count(name)){
                 durations[name]=std::vector<double>();
@@ -26,7 +26,7 @@ public:
             starts.erase(name);
         }
     }
-    static void print(){
+    static inline void print(){
         for(auto iter=timer::durations.begin();iter!=timer::durations.end();iter++){
             auto name = iter->first;
             auto& duration_list = iter->second;

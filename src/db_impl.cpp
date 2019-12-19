@@ -344,6 +344,7 @@ namespace minidb {
         int sst_fn=file_number_++;
         ptr<SSTableBuilder> sst_builder = make_ptr<SSTableBuilder>(db_name_,sst_fn);
         ptr<Record> last;
+        timer::start("merge");
         while(!heap.empty()){
             auto nxt = heap.pop();
             if(nxt== nullptr){
@@ -363,6 +364,7 @@ namespace minidb {
             }
         }
         sst_builder->finish();
+        timer::end("merge");
         edit->add_sst(make_ptr<SSTable>(db_name_,sst_fn),level+1);
         int new_ver_fn = file_number_++;
         auto new_ver = version_->apply(edit,db_name_,new_ver_fn);
