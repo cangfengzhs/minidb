@@ -4,16 +4,12 @@
 
 #include "log_writer.h"
 #include "file_util.h"
-#include <sstream>
-#include <unistd.h>
-#include <cstdio>
-#include <cassert>
 namespace minidb{
     LogWriter::LogWriter(const std::string& db_name,int file_number,bool create) {
         file_number_=file_number;
         writer = make_ptr<BufWriter>(db_name+"/"+fn_fmt(file_number)+".log",true, create);
     }
-    void LogWriter::append(minidb::ptr<minidb::Record> record) {
+    void LogWriter::append(const minidb::ptr<minidb::Record>& record) {
         buf_append(record->checksum());
         buf_append(record->user_key()->size());
         buf_append(record->user_key());
@@ -31,7 +27,7 @@ namespace minidb{
     void LogWriter::buf_append(int size) {
         buf_append((char*)&size,sizeof(int));
     }
-    void LogWriter::buf_append(minidb::ptr<minidb::Slice> slice) {
+    void LogWriter::buf_append(const minidb::ptr<minidb::Slice>& slice) {
         buf_append(slice->data(),slice->size());
     }
     void LogWriter::buf_append(minidb::LogSeqNumber lsn) {

@@ -45,7 +45,7 @@ namespace minidb{
         //在内存中构建新的version
         Version(ptr<LogWriter> log,ptr<LogWriter> imm_log,SstSetList& sst_set_list,LogSeqNumber lsn,const std::string& db_name,int file_number,bool create);
         //新建version并修改version pointer
-        ptr<Version> apply(ptr<VersionEdit> edit,const std::string& db_name,int file_number);
+        ptr<Version> apply(const ptr<VersionEdit>& edit,const std::string& db_name,int file_number);
         void remove();
         void print();
     };

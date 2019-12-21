@@ -27,7 +27,7 @@ namespace minidb{
     }
     Record::Record(minidb::ptr<minidb::Slice> user_key, minidb::LogSeqNumber lsn, minidb::KeyType type,
                    minidb::ptr<minidb::Slice> value):
-                   user_key_(user_key),lsn_(lsn),type_(type),value_(value),checksum_(0){}
+                   user_key_(std::move(user_key)),lsn_(lsn),type_(type),value_(std::move(value)),checksum_(0){}
     ptr<Slice> Record::value() {
         return value_;
     }

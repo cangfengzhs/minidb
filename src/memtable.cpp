@@ -4,7 +4,6 @@
 
 #include "memtable.h"
 #include "comparator.h"
-#include "timer.h"
 #include "error.h"
 namespace minidb {
     MemTable::MemTable() : size_(0), skiplist_(record_comparator) {}
