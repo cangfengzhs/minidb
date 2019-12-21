@@ -11,6 +11,7 @@
 #include "log.h"
 #include <unistd.h>
 #include <error.h>
+#include <cstring>
 #include <cstdio>
 namespace minidb {
     void create_dir(const std::string &dir_name) {
@@ -101,14 +102,19 @@ namespace minidb {
         return append((const char*)data,size);
     }
     int BufWriter::append(const char * data, int size) {
-        for(int i=0;i<size;i++){
-            buf[buf_offset++]=data[i];
-            if(buf_offset==8192){
+        int total=0;
+        while(size>0){
+            int cnt = std::min(size,config::BUFWRITER_BUF_SIZE-buf_offset);
+            memcpy(buf+buf_offset,data+total,cnt);
+            size-=cnt;
+            total+=cnt;
+            buf_offset+=cnt;
+            if(buf_offset==config::BUFWRITER_BUF_SIZE){
                 flush();
             }
         }
-        size_+=size;
-        return size;
+        size_+=total;
+        return total;
     }
     bool BufWriter::flush() {
         int cnt = write(filemeta.fd,buf,buf_offset);

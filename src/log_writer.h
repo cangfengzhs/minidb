@@ -18,13 +18,13 @@ namespace minidb{
         LogSeqNumber max_lsn_;
         inline void buf_append(Checksum checksum);
         inline void buf_append(int size);
-        inline void buf_append(ptr<Slice> slice);
+        inline void buf_append(const ptr<Slice>& slice);
         inline void buf_append(LogSeqNumber lsn);
         inline void buf_append(KeyType type);
         inline void buf_append(const char* data,int size);
     public:
         LogWriter(const std::string& db_name,int file_number,bool create);
-        void append(ptr<Record> record);
+        void append(const ptr<Record>& record);
         int file_number();
         LogSeqNumber max_lsn();
         int flush();

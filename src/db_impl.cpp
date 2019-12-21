@@ -13,6 +13,7 @@
 #include <condition_variable>
 #include <utility>
 #include <queue>
+#include "debug.h"
 namespace minidb {
     DBImpl::DBImpl(std::string db_name) : db_name_(std::move(db_name)) {
         file_number_ = 1;
@@ -93,7 +94,7 @@ namespace minidb {
         for(int i=0;i<cnt;i++){
             reader.read(&x,4);
             reader.read(&level,1);
-            sst_set_list[level].emplace(make_ptr<SSTable>(db_name,x));
+            sst_set_list[level].insert(make_ptr<SSTable>(db_name,x));
             impl->file_number_ = max(impl->file_number_, x);
         }
         //获取version的最大lsn，避免出现log都为空的情况
@@ -346,7 +347,13 @@ namespace minidb {
         ptr<Record> last;
         timer::start("merge");
         while(!heap.empty()){
+#ifdef DEBUG
+            timer::start("pop");
+#endif
             auto nxt = heap.pop();
+#ifdef DEBUG
+            timer::end("pop");
+#endif
             if(nxt== nullptr){
                 break;
             }
@@ -359,7 +366,13 @@ namespace minidb {
                     sst_fn = file_number_++;
                     sst_builder = make_ptr<SSTableBuilder>(db_name_,sst_fn);
                 }
+#ifdef DEBUG
+                timer::start("add record");
+#endif
                 sst_builder->add_record(nxt);
+#ifdef DEBUG
+                timer::end("add record");
+#endif
                 last = nxt;
             }
         }

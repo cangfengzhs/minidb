@@ -8,35 +8,36 @@
 #include <map>
 #include <vector>
 #include <string>
-#include <ctime>
+#include <chrono>
 #include <algorithm>
 class timer{
-    static std::map<std::string,std::vector<double>> durations;
-    static std::map<std::string,clock_t> starts;
+    static std::map<std::string,std::vector<std::chrono::duration<double>>> durations;
+    static std::map<std::string,std::chrono::steady_clock::time_point> starts;
 public:
-    static void start(std::string name){
-        starts[name]=clock();
+    static inline void start(const std::string& name){
+        starts[name]=std::chrono::steady_clock::now();
     }
-    static inline void end(std::string name){
+    static inline void end(const std::string& name){
         if(starts.count(name)){
             if(!durations.count(name)){
-                durations[name]=std::vector<double>();
+                durations[name]=std::vector<std::chrono::duration<double>>();
             }
-            durations[name].push_back(double(clock()-starts[name])/CLOCKS_PER_SEC);
+            durations[name].push_back(
+                    std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now()-starts[name]));
             starts.erase(name);
         }
     }
     static inline void print(){
-        for(auto iter=timer::durations.begin();iter!=timer::durations.end();iter++){
-            auto name = iter->first;
-            auto& duration_list = iter->second;
-            auto cnt = duration_list.size();
-            double total = 0;
+        for(auto & iter : timer::durations){
+            auto name = iter.first;
+            auto& duration_list = iter.second;
+            int cnt = duration_list.size();
+            std::chrono::duration<double> total{};
             for(auto dur:duration_list){
                 total+=dur;
             }
-            double avg = 1.0*total/cnt;
-            printf("Name: %s\tcount: %d\ttotal time: %.4f\tavg time: %.4f\n",name.c_str(),cnt,total,avg);
+            std::chrono::duration<double> avg = 1.0*total/cnt;
+            printf("Name: %s\tcount: %d\ttotal time: %.4f\tavg time: %.4f\n",name.c_str(),cnt,total.count(),avg.count());
         }
     }
 };

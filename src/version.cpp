@@ -44,7 +44,7 @@ namespace minidb {
                     log_debug("new version sst number:%d",x);
                     writer.append(&x, 4);
                     char level=(char)i;
-                    writer.append(&level, level);
+                    writer.append(&level, 1);
                 }
             }
             writer.append(&lsn_, sizeof(LogSeqNumber));
@@ -56,7 +56,7 @@ namespace minidb {
     }
 
     ptr<class minidb::Version>
-    Version::apply(ptr<class minidb::VersionEdit> edit, const std::string &db_name, int file_number) {
+    Version::apply(const ptr<class minidb::VersionEdit>& edit, const std::string &db_name, int file_number) {
         LogSeqNumber lsn = this->lsn_;
         ptr<LogWriter> log = edit->log_flag?edit->log_:log_;
         ptr<LogWriter> pre_log = edit->pre_log_flag?edit->pre_log_:pre_log_;
@@ -90,7 +90,7 @@ namespace minidb {
         else printf("PRE LOG: nullptr\n");
         for(int i=0;i<sst_set_list_.size();i++){
             printf("SST LEVEL %d:",i);
-            for(auto sst:sst_set_list_[i]){
+            for(const auto& sst:sst_set_list_[i]){
                 printf("%d\t",sst->file_number());
             }
             printf("\n");
