@@ -30,6 +30,9 @@ namespace minidb{
         bool empty(){
             return queue_.empty();
         }
+        size_t size(){
+            return queue_.size();
+        }
     };
 }
 #endif //MINIDB_CONCURRENT_QUEUE_H

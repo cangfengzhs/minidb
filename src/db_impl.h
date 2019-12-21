@@ -16,13 +16,23 @@
 #include <memory>
 #include <mutex>
 #include <condition_variable>
+#include <atomic>
+#include <thread>
 namespace minidb{
 class DBImpl:public std::enable_shared_from_this<DBImpl>{
         std::string db_name_;
+
+        /*
+         * 全局锁。
+         * get之前lock并获取当前version memtable immu_memtable。之后释放。
+         * make_write_room/minor_compact/major_compact在写磁盘时释放锁。
+         */
+        std::mutex mut_;
         ptr<MemTable> memtable_;
         ptr<MemTable> immu_memtable_;
         ptr<Version> version_;
-        int file_number_;
+
+        std::atomic_int file_number_;
         LogSeqNumber lsn_;
         ConcurrentQueue<int> compact_task_queue;
         //ConcurrentQueue<int> write_task_queue;
@@ -30,9 +40,10 @@ class DBImpl:public std::enable_shared_from_this<DBImpl>{
         int major_compact(int level);
         void make_write_room();
         bool stop_;
-        static void _start_compact_thread(ptr<DBImpl> db);
+        static void _start_compact_thread(const ptr<DBImpl>& db);
         void write(const ptr<Slice>& user_key,KeyType key_type,const ptr<Slice>& value);
         int exchange_version(ptr<Version> new_ver,int new_ver_fn);
+        std::thread compact_thread;
 public:
         explicit DBImpl(std::string  dn_name);
         static ptr<DBImpl> open(const std::string& db_name);

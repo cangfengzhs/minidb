@@ -9,7 +9,8 @@
 namespace minidb::config{
     const int SKIPLIST_MAX_LEVEL = 20;
     const int SSTABLE_LEVEL = 5;
-    const int SSTABLE_MAX_FILE_COUNT=8;
+    const int SSTABLE_MAX_FILE_COUNT=4;
+    const int SSTABLE_SOFT_MAX_FILE_COUNT=8;
     const uint64_t SSTABLE_FILE_SIZE[5]={16*1024*1024,128*1024*1024,1024ll*1024*1024,8192ll*1024*1024,64ll*1024*1024*1024};
     const int MEMTABLE_MAX_SIZE = 16*1024*1024;
     const int BUFWRITER_BUF_SIZE = 32*1024;
