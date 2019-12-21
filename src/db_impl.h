@@ -12,14 +12,18 @@
 #include "sstable.h"
 #include "version.h"
 #include "concurrent_queue.h"
+#include "write_task.h"
+#include <queue>
+#include <deque>
 #include <chrono>
 #include <memory>
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
 #include <thread>
-namespace minidb{
-class DBImpl:public std::enable_shared_from_this<DBImpl>{
+
+namespace minidb {
+    class DBImpl : public std::enable_shared_from_this<DBImpl> {
         std::string db_name_;
 
         /*
@@ -35,25 +39,45 @@ class DBImpl:public std::enable_shared_from_this<DBImpl>{
         std::atomic_int file_number_;
         LogSeqNumber lsn_;
         ConcurrentQueue<int> compact_task_queue;
-        //ConcurrentQueue<int> write_task_queue;
-        int minor_compact(const ptr<MemTable>& mem);
+        std::mutex write_mut_;
+        std::deque<WriteTask *> write_task_queue;
+
+        int minor_compact(const ptr<MemTable> &mem);
+
         int major_compact(int level);
+
         void make_write_room();
+
         bool stop_;
-        static void _start_compact_thread(const ptr<DBImpl>& db);
-        void write(const ptr<Slice>& user_key,KeyType key_type,const ptr<Slice>& value);
-        int exchange_version(ptr<Version> new_ver,int new_ver_fn);
+
+        static void _start_compact_thread(const ptr<DBImpl> &db);
+
+        void write(const ptr<Slice> &user_key, KeyType key_type, const ptr<Slice> &value);
+
+        void write(WriteTask &task);
+
+        int exchange_version(ptr<Version> new_ver, int new_ver_fn);
+
         std::thread compact_thread;
-public:
-        explicit DBImpl(std::string  dn_name);
-        static ptr<DBImpl> open(const std::string& db_name);
-        static ptr<DBImpl> create(const std::string& db_name);
-        void set(const ptr<Slice>& key,const ptr<Slice>& value);
-        ptr<Slice> get(const ptr<Slice>& key);
-        void remove(const ptr<Slice>& key);
+    public:
+        explicit DBImpl(std::string dn_name);
+
+        static ptr<DBImpl> open(const std::string &db_name);
+
+        static ptr<DBImpl> create(const std::string &db_name);
+
+        void set(const ptr<Slice> &key, const ptr<Slice> &value);
+
+        ptr<Slice> get(const ptr<Slice> &key);
+
+        void remove(const ptr<Slice> &key);
+
         void stop();
+
         void start_compact_thread();
+
         void do_compact(bool loop);
+
         ~DBImpl();
 
     };

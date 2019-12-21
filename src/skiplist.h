@@ -73,7 +73,6 @@ namespace minidb {
                     break;
                 }
             }
-            assert(c != 0);
             Node* down = _add(pre->down, key, cur_level - 1, ins_level);
             if (cur_level <= ins_level) {
                 Node* ret = alloc_node();

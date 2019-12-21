@@ -9,11 +9,14 @@
 #include "timer.h"
 #include "merge_heap.h"
 #include "log.h"
-#include <algorithm>
+#include "write_task.h"
 #include <condition_variable>
 #include <utility>
 #include <queue>
 #include <thread>
+#include <tuple>
+#include <thread>
+#include <random>
 #include "debug.h"
 namespace minidb {
     DBImpl::DBImpl(std::string db_name) : db_name_(std::move(db_name)) {
@@ -126,7 +129,9 @@ namespace minidb {
     }
 
     void DBImpl::set(const minidb::ptr<minidb::Slice>& key, const minidb::ptr<minidb::Slice>& value) {
-        write(key,KeyType::INSERT,value);
+        WriteTask task;
+        task.append(key,KeyType::INSERT,value);
+        write(task);
     }
     //只有一个线程会执行make_write_room
     void DBImpl::make_write_room() {
@@ -151,6 +156,7 @@ namespace minidb {
     }
     void DBImpl::write(const minidb::ptr<minidb::Slice>& user_key, minidb::KeyType key_type,
                        const minidb::ptr<minidb::Slice>& value) {
+
         make_write_room();
         LogSeqNumber lsn = lsn_ + 1;
         ptr<Record> record = make_ptr<Record>(user_key, lsn, key_type, value);
@@ -164,6 +170,65 @@ namespace minidb {
         lsn_ = lsn;
         //do_compact(false);
 
+    }
+
+    void DBImpl::write(WriteTask &task) {
+        log_debug("start write");
+        std::unique_lock<std::mutex> lck(write_mut_);
+        write_task_queue.push_back(&task);
+        while (!(&task == write_task_queue.front() || task.done())) {
+            task.wait(lck);
+        }
+        if (task.done()) {
+            return;
+        }
+        //只有一个线程会执行到此处
+        auto head = write_task_queue.begin();
+        auto tail = write_task_queue.begin();
+        WriteTask *last_task = *tail;
+        int cnt = 0;
+        while (cnt<100) {
+            if (tail == write_task_queue.end()) {
+                break;
+            } else {
+                last_task=*tail;
+                cnt++;
+                tail++;
+                continue;
+            }
+        }
+        //释放锁，让其他线程可以将task添加到queue
+        {
+            lck.unlock();
+            log_debug("start make write room");
+            make_write_room();
+            LogSeqNumber lsn = lsn_ + 1;
+            for (auto iter = head; iter != tail; iter++) {
+                for (auto &tup : *(*iter)) {
+                    ptr<Record> record = make_ptr<Record>(std::get<0>(tup), lsn, std::get<1>(tup), std::get<2>(tup));
+                    //timer::start(std::string("log"));
+                    version_->log_->append(record);
+                    //timer::end(std::string("log"));
+                    //timer::start(std::string("mem"));
+                    memtable_->set(std::get<0>(tup), lsn, std::get<1>(tup), std::get<2>(tup));
+                }
+            }
+            version_->log_->flush();
+            lsn_ = lsn;
+            lck.lock();
+        }
+        while(true){
+            WriteTask* t = write_task_queue.front();
+            write_task_queue.pop_front();
+            t->done(true);
+            t->notify();
+            if(t==last_task){
+                break;
+            }
+        }
+        if(!write_task_queue.empty()) {
+            write_task_queue.front()->notify();
+        }
     }
     ptr<Slice> DBImpl::get(const minidb::ptr<minidb::Slice>& key) {
         std::unique_lock<std::mutex> lck(mut_);
@@ -236,7 +301,9 @@ namespace minidb {
     }
 
     void DBImpl::remove(const minidb::ptr<minidb::Slice>& key) {
-        write(key,KeyType::DELETE, nullptr);
+        WriteTask task;
+        task.append(key,KeyType::DELETE, nullptr);
+        write(task);
     }
     int DBImpl::minor_compact(const minidb::ptr<minidb::MemTable>& mem) {
         int fn;
@@ -331,7 +398,7 @@ namespace minidb {
         ptr<Version> version = version_;
         ptr<VersionEdit> edit = make_ptr<VersionEdit>();
         //获取level级要compact的sst
-        SSTableSet sst_set;
+        SSTableSet sst_set{};
         for(const auto& sst:version->sst_set_list_[level]){
             if(sst->wait_compact()){
                 sst_set.insert(sst);
@@ -376,7 +443,6 @@ namespace minidb {
             int sst_fn = file_number_++;
             ptr<SSTableBuilder> sst_builder = make_ptr<SSTableBuilder>(db_name_, sst_fn);
             ptr<Record> last;
-            timer::start("merge");
             while (!heap.empty()) {
 #ifdef DEBUG
                 timer::start("pop");
@@ -408,7 +474,6 @@ namespace minidb {
                 }
             }
             sst_builder->finish();
-            timer::end("merge");
             edit->add_sst(make_ptr<SSTable>(db_name_, sst_fn), level + 1);
             lck.lock();
         }
@@ -432,4 +497,5 @@ namespace minidb {
         set_version_pointer(db_name_,new_ver_fn);
         return 0;
     }
+
 }
