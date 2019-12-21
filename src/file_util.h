@@ -6,6 +6,7 @@
 #define MINIDB_FILE_UTIL_H
 
 #include <string>
+#include "config.h"
 
 namespace minidb{
     void create_dir(const std::string& dir_name);
@@ -25,7 +26,7 @@ namespace minidb{
     };
 
     class BufWriter{
-        char buf[8192];
+        char buf[config::BUFWRITER_BUF_SIZE];
         int buf_offset;
         uint64_t size_;
     public:

@@ -4,5 +4,5 @@
 
 #include "timer.h"
 
- std::map<std::string,std::vector<double>> timer::durations=std::map<std::string,std::vector<double>>();
- std::map<std::string,clock_t> timer::starts=std::map<std::string,clock_t>();
+ std::map<std::string,std::vector<std::chrono::duration<double>>> timer::durations= std::map<std::string,std::vector<std::chrono::duration<double>>>();
+ std::map<std::string,std::chrono::steady_clock::time_point> timer::starts=std::map<std::string,std::chrono::steady_clock::time_point>();

@@ -6,66 +6,74 @@
 #include "slice.h"
 #include <cassert>
 #include <iostream>
+#include <fstream>
+#include <unordered_map>
 #include "timer.h"
 #include "log.h"
+
 using namespace std;
 using namespace minidb;
 int main(){
     LOG::log_level=LOG::LogLevel::INFO;
-    DB db = DB::create("test_db");
-    log_info("start set 1");
-    log_warn("test warning");
-    log_error("test error");
-    log_debug("test debug");
-    timer::start("per 100000");
-    for(int i=0;i<10000000;i++){
-        string key = to_string(i);
-        string value = to_string(i*2);
-        db.set(make_shared<Slice>(key),make_shared<Slice>(value));
-        if(i%100000==99999){
-            timer::end("per 100000");
-            timer::print();
-            timer::start("per 100000");
-        }
-    }
-    log_info("start set 2");
-    for(int i=0;i<10000000;i+=2){
-        string key = std::to_string(i);
-        string value = std::to_string(i*4);
-        db.set(make_shared<Slice>(key),make_shared<Slice>(value));
-    }
-    log_debug("start delete");
-    for(int i=0;i<10000000;i+=4){
-        if(i==8){
-            log_debug("tag:8");
-        }
-        string key = std::to_string(i);
-        db.remove(make_shared<Slice>(key));
-    }
+    string key,value;
+    DB db = DB::open("test_db");
+//    log_info("start set");
+//    timer::start("per 100000");
+//    ifstream fin("../scripts/input.txt");
+//    string line;
+
+//    int i=0;
+//    vector<string> key_list;
+//    vector<string> value_list;
+//    while(!fin.eof()){
+//        key_list.clear();
+//        value_list.clear();
+//        for(int i=0;i<100000&&!fin.eof();i++){
+//            fin>>key>>value;
+//            key_list.emplace_back(key);
+//            value_list.emplace_back(value);
+//        }
+//        timer::start("per 100000");
+//
+//        for(int i=0;i<key_list.size();i++){
+//            if(value_list[i]=="delete"){
+//                db.remove(make_shared<Slice>(key_list[i]));
+//            }
+//            else{
+//                db.set(make_shared<Slice>(key_list[i]),make_shared<Slice>(value_list[i]));
+//            }
+//        }
+//
+//        timer::end("per 100000");
+//        timer::print();
+//
+//        i++;
+//    }
+//    fin.close();
     log_debug("start get");
+    ifstream fin2("../scripts/output.txt");
+    unordered_map<string,string> expire_set;
+    while(!fin2.eof()){
+        fin2>>key>>value;
+        expire_set[key]=value;
+    }
     timer::start("get");
-    for(int i=0;i<10000000;i++){
-        string key = to_string(i);
-        shared_ptr<Slice> value;
-        if(i%4==0){
-            value = nullptr;
-        }
-        else if(i%2==0){
-            value = make_shared<Slice>(to_string(i*4));
-        }
-        else{
-            value = make_shared<Slice>(to_string(i*2));
-        }
-        auto ret = db.get(make_shared<Slice>(key));
-        if(i%100000==99999){
+    int cnt=0;
+    for(auto iter=expire_set.begin();iter!=expire_set.end();iter++){
+        cnt++;
+        auto ret = db.get(make_shared<Slice>(iter->first));
+//        if((iter->second=="delete")){
+//            assert(ret== nullptr);
+//        }
+//        else{
+//            shared_ptr<Slice> expire = make_shared<Slice>(iter->second);
+//            assert(*ret==*expire);
+//        }
+        if(cnt%10000==0){
             timer::end("get");
+            log_info("get %d",cnt);
             timer::print();
             timer::start("get");
-        }
-        if(ret==value||(ret&&value&&*ret==*value)){
-            //cout<<"true"<<endl;
-        }else{
-            assert(false);
         }
     }
     return 0;

@@ -5,7 +5,8 @@
 #include "format.h"
 #include "config.h"
 #include "comparator.h"
-#include <cassert>
+#include "debug.h"
+#include "timer.h"
 #include <utility>
 
 namespace minidb {
@@ -78,7 +79,13 @@ namespace minidb {
     ptr<class minidb::Record> SSTable::Iterator::next() {
         for(;;) {
             Block::Iterator &iter = block_stack.top();
+#ifdef DEBUG
+            timer::start("block iter next");
+#endif
             ptr<Record> ret = iter.next();
+#ifdef DEBUG
+            timer::end("block iter next");
+#endif
             if(ret->type()==KeyType::OFFSET){
                 ptr<Block> blk = make_ptr<Block>((char *) (sst->reader->base() + *(uint64_t *) (ret->value()->data())));
                 block_stack.emplace(blk->iterator());
@@ -90,7 +97,6 @@ namespace minidb {
                 return ret;
             }
         }
-
     }
     Block::Block(char *base) {
         base_ = base;

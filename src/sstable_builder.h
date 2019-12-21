@@ -17,11 +17,11 @@ namespace minidb{
         vec<ptr<BlockBuilder>> index_block_list;
         ptr<BlockBuilder> data_block;
         ptr<BufWriter> writer;
-        int add_index(ptr<Record> record,int index_level);
-        ptr<Record> make_index(ptr<BlockBuilder> block);
+        int add_index(const ptr<Record>& record,int index_level);
+        ptr<Record> make_index(const ptr<BlockBuilder>& block);
     public:
         SSTableBuilder(const std::string& db_name,int file_number);
-        int add_record(ptr<Record> record);
+        int add_record(const ptr<Record>& record);
         int finish();
         uint64_t size();
     };
@@ -30,10 +30,10 @@ namespace minidb{
         int size_;
     public:
         BlockBuilder();
-        int add_record(ptr<Record> record);
+        int add_record(const ptr<Record>& record);
         int size();
         bool empty();
-        int dump(ptr<BufWriter> writer);
+        int dump(const ptr<BufWriter>& writer);
         int clear();
         ptr<Record> max_record();
     };

@@ -4,19 +4,17 @@
 
 #include "sstable_builder.h"
 #include "file_util.h"
-#include <cstdio>
-#include <cassert>
 namespace minidb{
     SSTableBuilder::SSTableBuilder(const std::string &db_name, int file_number) {
         std::string file_name = db_name+"/"+fn_fmt(file_number)+".sst";
         writer = make_ptr<BufWriter>(file_name,true,true);
         data_block = make_ptr<BlockBuilder>();
     }
-    int SSTableBuilder::add_index(minidb::ptr<minidb::Record> record,int index_level) {
+    int SSTableBuilder::add_index(const minidb::ptr<minidb::Record>& record,int index_level) {
         if(index_block_list.size()<=index_level){
             index_block_list.emplace_back(make_ptr<BlockBuilder>());
         }
-        auto block = index_block_list[index_level];
+        auto& block = index_block_list[index_level];
         int ret = block->add_record(record);
         if(ret==0){
             return 0;
@@ -28,7 +26,7 @@ namespace minidb{
         add_index(index_record,index_level+1);
         return 0;
     }
-    int SSTableBuilder::add_record(ptr<class minidb::Record> record) {
+    int SSTableBuilder::add_record(const ptr<class minidb::Record>& record) {
         if(min_user_key== nullptr){
             min_user_key=record->user_key();
         }
@@ -81,7 +79,7 @@ namespace minidb{
         writer->close();
         return 0;
     }
-    ptr<Record> SSTableBuilder::make_index(minidb::ptr<minidb::BlockBuilder> block) {
+    ptr<Record> SSTableBuilder::make_index(const minidb::ptr<minidb::BlockBuilder>& block) {
         ptr<Record> r = block->max_record();
         uint64_t offset = writer->size();
         char* data = (char*)&offset;
@@ -97,14 +95,12 @@ namespace minidb{
         return record_list.empty();
     }
     ptr<class minidb::Record> BlockBuilder::max_record() {
-        int s = record_list.size();
-        ptr<Record> ret = record_list[s-1];
-        return ret;
+        return record_list.back();
     }
     int BlockBuilder::size() {
         return size_;
     }
-    int BlockBuilder::add_record(ptr<class minidb::Record> record) {
+    int BlockBuilder::add_record(const ptr<class minidb::Record>& record) {
         int need = record->user_key()->size();
         need+=4+8+sizeof(KeyType)+4+2;
         if(record->value()){
@@ -122,10 +118,10 @@ namespace minidb{
         size_=4;
         return 0;
     }
-    int BlockBuilder::dump(minidb::ptr<minidb::BufWriter> writer) {
+    int BlockBuilder::dump(const minidb::ptr<minidb::BufWriter>& writer) {
         uint16_t offset=0;
         vec<uint16_t> record_offset_array;
-        for(auto record:record_list){
+        for(const auto& record:record_list){
             int cnt=0;
             record_offset_array.push_back(offset);
             int size = record->user_key()->size();
