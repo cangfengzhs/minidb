@@ -45,9 +45,16 @@ int main(){
     LOG::log_level=LOG::LogLevel::INFO;
     string key,value;
     DB db = DB::create("test_db");
-    const int thread_cnt = 4;
+    const int thread_cnt = 8;
     vector<std::thread> threads(thread_cnt);
-    string files[4]={"../scripts/xaa","../scripts/xab","../scripts/xac","../scripts/xad"};
+    string files[8]={"../scripts/xaa",
+                     "../scripts/xab",
+                     "../scripts/xac",
+                     "../scripts/xad",
+                     "../scripts/xae",
+                     "../scripts/xaf",
+                     "../scripts/xag",
+                     "../scripts/xah"};
     log_info("start set");
     timer::start("total set time");
     for(int i=0;i<thread_cnt;i++){

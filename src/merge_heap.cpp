@@ -17,6 +17,7 @@ namespace minidb {
         for(int i=0;i<heap_array.size();i++){
             iter_end_flag.push_back(false);
         }
+        uncomplete_iter_cnt=iter_end_flag.size();
     }
 
 
@@ -34,6 +35,7 @@ namespace minidb {
         heap_array[index].first=nullptr;
         if(!heap_array[index].second.has_next()){
             iter_end_flag[index]=true;
+            uncomplete_iter_cnt--;
         }
         else{
 #ifdef DEBUG

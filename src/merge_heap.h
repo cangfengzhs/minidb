@@ -12,22 +12,19 @@ namespace minidb{
         using Node = std::pair<ptr<Record>,SSTable::Iterator>;
         vec<Node> heap_array;
         vec<bool> iter_end_flag;
+        int uncomplete_iter_cnt;
     public:
         void add_sst(const ptr<SSTable>& sst);
         void init();
         inline bool empty();
+        inline bool complete();
         ptr<Record> pop();
     };
     bool MergeHeap::empty() {
-        if(heap_array.empty()){
-            return true;
-        }
-        for(auto flag:iter_end_flag){
-            if(!flag){
-                return false;
-            }
-        }
-        return true;
+        return heap_array.empty();
+    }
+    bool MergeHeap::complete() {
+        return uncomplete_iter_cnt==0;
     }
 }
 

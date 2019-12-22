@@ -14,7 +14,7 @@ add_executable(db_test src/db_test.cpp include/slice.h include/db.h src/record.h
         src/comparator.cpp  src/file_util.h src/file_util.cpp
         src/log_writer.cpp src/log_writer.h src/version.h
         src/version.cpp src/sstable.h src/sstable.cpp
-        src/sstable_builder.cpp utils/timer.h utils/timer.cpp utils/log.h utils/log.cpp src/concurrent_queue.h src/merge_heap.h src/merge_heap.cpp src/debug.h src/write_task.h)
+        src/sstable_builder.cpp utils/timer.h utils/timer.cpp utils/log.h utils/log.cpp src/concurrent_queue.h src/merge_heap.h src/merge_heap.cpp src/debug.h src/write_task.h src/mmap_record.h src/compact_task_manager.h)
 add_executable(sstable_test src/sstable_test.cpp src/sstable_builder.cpp src/sstable_builder.h src/file_util.cpp src/file_util.h src/format.h src/config.h src/record.cpp src/record.h src/slice.cpp include/slice.h src/sstable.cpp src/sstable.h src/comparator.h src/comparator.cpp)
 add_executable(merge_test src/file_util.h src/file_util.cpp utils/log.h utils/log.cpp src/comparator.h src/comparator.cpp src/record.h src/record.cpp include/slice.h src/slice.cpp src/merge_heap.h src/merge_heap.cpp src/sstable.h src/sstable.cpp src/merge_heap_test.cpp)
 target_link_libraries (db_test ${CMAKE_THREAD_LIBS_INIT})

@@ -443,7 +443,7 @@ namespace minidb {
             int sst_fn = file_number_++;
             ptr<SSTableBuilder> sst_builder = make_ptr<SSTableBuilder>(db_name_, sst_fn);
             ptr<Record> last;
-            while (!heap.empty()) {
+            while (!heap.complete()) {
 #ifdef DEBUG
                 timer::start("pop");
 #endif
