@@ -110,7 +110,7 @@ namespace minidb {
         impl->version_=make_ptr<Version>(log,pre_log,sst_set_list,lsn,db_name,version_fn, false);
         //impl->start_compact_thread();
         if(impl->immu_memtable_){
-            impl->compact_task_queue.push(-1);
+            impl->compact_task_manager.set(-1);
         }
         return impl;
 
@@ -151,25 +151,8 @@ namespace minidb {
             auto new_ver = version_->apply(edit, db_name_, new_ver_fn);
             exchange_version(new_ver, new_ver_fn);
             memtable_ = make_ptr<MemTable>();
-            compact_task_queue.push(-1);
+            compact_task_manager.set(-1);
         }
-    }
-    void DBImpl::write(const minidb::ptr<minidb::Slice>& user_key, minidb::KeyType key_type,
-                       const minidb::ptr<minidb::Slice>& value) {
-
-        make_write_room();
-        LogSeqNumber lsn = lsn_ + 1;
-        ptr<Record> record = make_ptr<Record>(user_key, lsn, key_type, value);
-        //timer::start(std::string("log"));
-        version_->log_->append(record);
-        version_->log_->flush();
-        //timer::end(std::string("log"));
-        //timer::start(std::string("mem"));
-        memtable_->set(user_key, lsn, key_type, value);
-        //timer::end(std::string("mem"));
-        lsn_ = lsn;
-        //do_compact(false);
-
     }
 
     void DBImpl::write(WriteTask &task) {
@@ -255,7 +238,7 @@ namespace minidb {
             //TODO incr miss count
             if(!sst->wait_compact()&&sst->miss_times()>=config::MAX_MISS_TIMES){
                 //TODO set sst wait compact
-                compact_task_queue.push(0);
+                compact_task_manager.set(0);
             }
             if(tmp== nullptr){
                 continue;
@@ -274,7 +257,7 @@ namespace minidb {
                 //TODO incr miss count
                 if(!sst->wait_compact()&&sst->miss_times()>=config::MAX_MISS_TIMES){
                     //TODO set sst wait compact
-                    compact_task_queue.push(i);
+                    compact_task_manager.set(i);
                 }
                 if(tmp== nullptr){
                     continue;
@@ -340,7 +323,7 @@ namespace minidb {
             //lck.lock();
         }
         if(new_ver->sst_set_list_[0].size()>=config::SSTABLE_SOFT_MAX_FILE_COUNT){
-            compact_task_queue.push(0);
+            compact_task_manager.set(0);
         }
         return 0;
     }
@@ -361,28 +344,21 @@ namespace minidb {
     }
     void DBImpl::do_compact(bool loop) {
         while(!stop_){
-            log_debug("compact task number:%d",compact_task_queue.size());
-            if(loop&&compact_task_queue.empty()){
+            int x = compact_task_manager.get();
+            if(loop&&x==-2){
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 continue;
             }
-            int last=-2;
-            while(!compact_task_queue.empty()){
-                int x = compact_task_queue.front();
+            do{
                 log_debug("compact level:%d",x);
-                compact_task_queue.pop();
                 if(x==-1){
                     minor_compact(immu_memtable_);
-                    continue;
-                }
-                if(x==last){
                     continue;
                 }
                 else{
                     major_compact(x);
                 }
-                last=x;
-            }
+            }while((x=compact_task_manager.get())!=-2);
             if(!loop){
                 break;
             }
@@ -485,7 +461,7 @@ namespace minidb {
             major_compact(level+1);
         }
         if(version_->sst_set_list_[level+1].size()>=config::SSTABLE_SOFT_MAX_FILE_COUNT){
-            compact_task_queue.push(level+1);
+            compact_task_manager.set(level+1);
         }
         return 0;
     }

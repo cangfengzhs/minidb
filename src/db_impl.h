@@ -13,6 +13,7 @@
 #include "version.h"
 #include "concurrent_queue.h"
 #include "write_task.h"
+#include "compact_task_manager.h"
 #include <queue>
 #include <deque>
 #include <chrono>
@@ -38,7 +39,7 @@ namespace minidb {
 
         std::atomic_int file_number_;
         LogSeqNumber lsn_;
-        ConcurrentQueue<int> compact_task_queue;
+        CompactTaskManager compact_task_manager;
         std::mutex write_mut_;
         std::deque<WriteTask *> write_task_queue;
 
@@ -51,8 +52,6 @@ namespace minidb {
         bool stop_;
 
         static void _start_compact_thread(const ptr<DBImpl> &db);
-
-        void write(const ptr<Slice> &user_key, KeyType key_type, const ptr<Slice> &value);
 
         void write(WriteTask &task);
 
