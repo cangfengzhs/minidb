@@ -10,15 +10,16 @@
 namespace minidb{
 
     class Slice{
-        std::string data_;
+        char* data_;
+        size_t size_;
     public:
-        Slice()= default;
-        Slice(int size);
+        Slice(size_t size);
         explicit Slice(const std::string& str);
         Slice(const char* start,const char* end);
-        inline int size(){return data_.size();}
-        inline const char* data(){return data_.data();}
+        inline int size(){return size_;}
+        inline const char* data(){return data_;}
         bool operator==(const Slice& ref)const;
+        ~Slice();
     };
 }
 
